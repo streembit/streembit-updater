@@ -34,6 +34,8 @@ var nodecrypto = require(global.cryptolib);
 var streembitkad = require('streembitlib/streembitkad/kaddht');
 streembit.config = require("./config.json");
 streembit.DEFS = require("./appdefs.js");
+streembit.account = require("./account");
+streembit.Message = require("./message");
 
 
 streembit.PeerTransport = (function (obj, logger, events, config ) {
@@ -195,6 +197,9 @@ streembit.PeerTransport = (function (obj, logger, events, config ) {
                 if (!address || !port) {
                     return resultfn("Invalid peer address and port");
                 }
+                
+                streembit.account.address = address;
+                streembit.account.port = port;
                 
                 obj.node.is_seedcontact_exists(function (result) {
                     if (result) {
@@ -454,62 +459,6 @@ streembit.Node = (function (module, logger, events, config) {
     return module;
 
 }(streembit.Node || {}, global.applogger, global.appevents, streembit.config));
-
-
-streembit.Message = (function (module, logger, events) {
-    
-    module.getvalue = function (val) {
-        return wotmsg.base64decode(val);
-    }
-    
-    module.decode = function (payload, public_key) {
-        return wotmsg.decode(payload, public_key);
-    }
-    
-    module.aes256decrypt = function (symmetric_key, cipher_text) {
-        return wotmsg.aes256decrypt(symmetric_key, cipher_text);
-    }
-    
-    module.aes256encrypt = function (symmetric_key, data) {
-        return wotmsg.aes256encrypt(symmetric_key, data);
-    }
-    
-    module.decrypt_ecdh = function (rcpt_private_key, rcpt_public_key, sender_public_key, jwe_input) {
-        return wotmsg.decrypt_ecdh(rcpt_private_key, rcpt_public_key, sender_public_key, jwe_input);
-    }
-    
-    module.getpayload = function (msg) {
-        return wotmsg.getpayload(msg);
-    }
-    
-    module.create_peermsg = function (data, notbuffer) {
-        var message = {
-            type: "PEERMSG",
-            data: data
-        };
-        var strobj = JSON.stringify(message);
-        if (notbuffer) {
-            return strobj;
-        }
-        
-        var buffer = new Buffer(strobj);
-        return buffer;
-    }
-    
-    module.create_id = function () {
-        var temp = uuid.v4().toString();
-        var id = temp.replace(/-/g, '');
-        return id;
-    }
-    
-    module.create_hash_id = function (data) {
-        var hashid = nodecrypto.createHash('sha1').update(data).digest().toString('hex');
-        return hashid;
-    }
-    
-    return module;
-
-}(streembit.Message || {}, global.applogger, global.appevents));
 
 
 streembit.PeerNet = (function (module, logger, events, config) {
@@ -1842,14 +1791,14 @@ streembit.PeerNet = (function (module, logger, events, config) {
         }
     }
     
-    module.publish_user = function (callback) {
+    module.publish_account = function (callback) {
         try {
             if (!callback) {
                 return streembit.notify.error("publish_user error: invalid callback parameter")
             }
             
             //  publishing user data
-            if (!streembit.User.public_key || !streembit.User.ecdh_public_key || !streembit.User.address || !streembit.User.port) {
+            if (!streembit.account.public_key || !streembit.account.ecdh_public_key || !streembit.account.address || !streembit.account.port) {
                 return callback("invalid user context data");
             }
             
@@ -1858,17 +1807,17 @@ streembit.PeerNet = (function (module, logger, events, config) {
             // create the WoT message 
             var payload = {};
             payload.type = wotmsg.MSGTYPE.PUBPK;
-            payload[wotmsg.MSGFIELD.PUBKEY] = streembit.User.public_key;
-            payload[wotmsg.MSGFIELD.ECDHPK] = streembit.User.ecdh_public_key;
+            payload[wotmsg.MSGFIELD.PUBKEY] = streembit.account.public_key;
+            payload[wotmsg.MSGFIELD.ECDHPK] = streembit.account.ecdh_public_key;
             payload[wotmsg.MSGFIELD.PROTOCOL] = config.transport;
-            payload[wotmsg.MSGFIELD.HOST] = streembit.User.address;
-            payload[wotmsg.MSGFIELD.PORT] = streembit.User.port;
+            payload[wotmsg.MSGFIELD.HOST] = streembit.account.address;
+            payload[wotmsg.MSGFIELD.PORT] = streembit.account.port;
             payload[wotmsg.MSGFIELD.UTYPE] = streembit.DEFS.USER_TYPE_HUMAN;
             
-            logger.debug("publish_user: %j", payload);
+            logger.debug("publish account: %j", payload);
             
-            var value = wotmsg.create(streembit.User.private_key, streembit.Message.create_id(), payload);
-            var key = streembit.User.name;
+            var value = wotmsg.create(streembit.account.private_key, streembit.Message.create_id(), payload);
+            var key = streembit.account.name;
             
             //  For this public key upload message the key is the device name
             streembit.Node.put(key, value, function (err, results) {
@@ -1894,7 +1843,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
                     }
                     
                     if (!success) {
-                        return callback("Publish user error: no results array returned");
+                        return callback("Publish account error: the account info was not published to any seeds.");
                     }
                 }
                 
@@ -1902,8 +1851,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
                 
                 callback();
                 
-                //  the public key has been uplodad, other peers can verify the messages -> ready to process device messages
-                events.emit(events.APPEVENT, events.TYPES.ONUSERPUBLISH);
+                //
             });
         }
         catch (e) {

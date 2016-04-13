@@ -1,4 +1,26 @@
-﻿'use strict';
+﻿/*
+ 
+This file is part of Streembit application. 
+Streembit is an open source project to create a real time communication system for humans and machines. 
+
+Streembit is a free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+as published by the Free Software Foundation, either version 3.0 of the License, or (at your option) any later version.
+
+Streembit is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of 
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with Streembit software.  
+If not, see http://www.gnu.org/licenses/.
+ 
+-------------------------------------------------------------------------------------------------------------------------
+Author: Tibor Zsolt Pardi 
+Copyright (C) 2016 The Streembit software development team
+-------------------------------------------------------------------------------------------------------------------------
+
+*/
+
+
+'use strict';
 
 var streembit = streembit || {};
 
@@ -9,7 +31,7 @@ var secrand = require('secure-random');
 streembit.config = require("./config.json");
 streembit.DEFS = require("./appdefs.js");
 streembit.accountsDB = require("./streembitdb").accountsdb;
-streembit.Message = require("./peercomm").Message;
+streembit.Message = require("./message");
 
 streembit.account = (function (accountobj, logger, config, events) {
     
@@ -222,7 +244,7 @@ streembit.account = (function (accountobj, logger, config, events) {
                     return callback("User initialize error: incorrect password");
                 }
                 else {
-                    return callback("User initialize error: %j", err);
+                    return callback("User initialize error: " + err.message);
                 }
             }
             

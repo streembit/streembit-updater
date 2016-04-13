@@ -10,5 +10,12 @@
     },
     "transport":  "tcp",
     "private_network": false,
-    "private_network_accounts": []
+    "private_network_accounts": [ ],
+    "devices": [
+        {
+            "device": "ds18b20",
+            "sample_interval": 5000
+        }
+    ]
+
 }

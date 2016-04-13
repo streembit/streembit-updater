@@ -89,6 +89,36 @@ assert(Array.isArray(config_node.seeds), 'Invalid seeds supplied. "seeds" must b
 streembit.maindbdb = 0;
 streembit.localdb = 0;
 
+function devices_init() {
+    try {
+        var devices = config.devices;
+        
+        if (!devices || devices.length == 0) {
+            logger.debug("No devices configured in the the config file.");
+            return;
+        }
+
+        for (var i = 0; i < devices.length; i++) {
+            var device = devices[i].device;
+            if (device == "ds18b20") {
+                var ds18b20 = require("./device/ds18b20" );
+                var options = {
+                    logger: logger,
+                    sample_interval: devices[i].sample_interval
+                };
+                var sensor = ds18b20.init_sensor(options);
+                sensor.on("temperature", function (value) {
+                    logger.debug("device event temperature: " + value);
+                });
+            }
+        }
+    }
+    catch (err) {
+        logger.error("device_init error: %j", err);
+    }
+}
+
+
 async.waterfall(
     [
         function (callback) {
@@ -98,6 +128,11 @@ async.waterfall(
             var loglevel = logConfig && logConfig.level ? logConfig.level : "debug";
             logger.init(loglevel, logspath, null, callback);
         },      
+        function (callback) {
+            //initialize the devices
+            devices_init();
+            callback();
+        },
         function (callback) {
             // create the db directory
             logger.info("initializing 'maindb' database directory");
@@ -149,6 +184,7 @@ async.waterfall(
             }
             
             logger.debug("seeds: %j", bootseeds.seeds);
+            logger.debug("account: " + config_node.account + ", address: " + config_node.address  + ", port: " + config_node.port);
             
             // initialize the Peer Network
             logger.info("Connecting to Streembit network");
@@ -179,13 +215,18 @@ async.waterfall(
             );
         },
         function (callback) {
-            streembit.PeerNet.publish_user(callback);
+            streembit.PeerNet.publish_account(callback);
         }
     ], 
-    function (err, result) {
+    function (err) {
         if (err) {
             console.log("Main init error: %j", err);
             logger.error("Main init error: %j", err);
+        }
+        else {
+            //  the device connected to the network and the account 
+            //  info was published to the DHT
+            logger.info("The device is connected to Streembit");
         }
     }
 );
