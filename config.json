@@ -1,0 +1,17 @@
+﻿{
+    "node": {
+        "account": "tzpardipi",
+        "address": "localhost",
+        "port": 32321,
+        "seeds": ["seed.streemio.org", "seed.streemio.net", "seed.streemio.biz", "seed.streemio.co"]
+    },
+    "log": {
+        "level": "debug"
+    },
+    "transport":  "tcp",
+    "discoverysrvc": true,
+    "max_discovery_seeds": 10,
+    "wsserver": true,
+    "private_network": false,
+    "private_network_accounts": []
+}
