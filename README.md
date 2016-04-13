@@ -63,6 +63,39 @@ $ node -v
 
 The installation version should be 10.1.
 
+Install Git:
+
+```bash
+$ sudo apt-get update
+```
+
+```bash
+$ sudo apt-get install git
+```
+
+```bash
+$ git clone https://github.com/streembit/streembit-pi.git
+```
+
+```bash
+$ cd streembit-pi
+```
+
+Change the account details of the config.json file. Your device is identified by the account name, and therefore to make accessible your device 
+you must create a unique account entity on the Streembit network. For example, if you want the device to be identifed with the "alicedevice0001" then
+put the "alicedevice0001" name at the node.account field.
+
+```json
+"node": {
+        "account": "alicedevice0001",
+        "address": "localhost",
+        "port": 32321,
+        "seeds": ["seed.streemio.org", "seed.streemio.net", "seed.streemio.biz", "seed.streemio.co"]
+    }
+```
+
+
+
 
 
 

@@ -1,6 +1,6 @@
 ﻿{
     "node": {
-        "account": "tzpardipi",
+        "account": "pitest0001",
         "address": "localhost",
         "port": 32321,
         "seeds": ["seed.streemio.org", "seed.streemio.net", "seed.streemio.biz", "seed.streemio.co"]
