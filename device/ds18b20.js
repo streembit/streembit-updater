@@ -46,7 +46,7 @@ Sensor.prototype.init = function () {
         this.logger.debug('initializing ds18b20 sensor');
 
         ds18b20.isDriverLoaded(function (err, isLoaded) {
-            this.logger.debug('ds18b20 driver loaded: ' + isLoaded);
+            self.logger.debug('ds18b20 driver loaded: ' + isLoaded);
             if (!isLoaded) {
                 //  try to load the driver
                 ds18b20.loadDriver(function (err) {
