@@ -23,6 +23,26 @@ Copyright (C) 2016 The Streembit software development team
 
 var streembit = streembit || {};
 
+var pksecret;
+
+try {
+    if (process.argv.indexOf("-pksecret") != -1) {
+        pksecret = process.argv[process.argv.indexOf("-pksecret") + 1]; //grab the next item
+    }
+}
+catch (err) {
+    console.log("argument parse error: %j", err);
+}
+
+if (!pksecret) {
+    //  try to get the current directory
+    console.log("The private key secret -pksecret command line parameter is required!");
+    process.exit(1);
+}
+
+console.log("pksecret: %s", pksecret);
+
+
 var DEFAULT_STREEMBIT_PORT = 32321;
 
 var config = require("./config.json");
@@ -43,15 +63,16 @@ if (!global.appevents) {
 var assert = require('assert');
 var path = require('path');
 var fs = require('fs');
-var crypto = require('crypto');
 var levelup = require('levelup');
 var async = require('async');
 var util = require('util');
 var assert = require('assert');
 var wotkad = require('streembitlib/streembitkad/kaddht');
+var streembut_utils = require("./utilities");
 streembit.bootclient = require("./bootclient");
 streembit.PeerNet = require("./peercomm").PeerNet;
-
+streembit.accountsDB = require("./streembitdb").accountsdb;
+streembit.account = require("./account");
 
 var config_node = config.node;
 if (!config_node) {
@@ -65,7 +86,8 @@ assert(config_node.seeds, "seeds must exists in the config field of seedsconf.js
 assert(Array.isArray(config_node.seeds), 'Invalid seeds supplied. "seeds" must be an array');
 
 // initialize the database path
-var maindb_path = path.join(__dirname, 'db', 'streembitdb');
+streembit.maindbdb = 0;
+streembit.localdb = 0;
 
 async.waterfall(
     [
@@ -78,40 +100,44 @@ async.waterfall(
         },      
         function (callback) {
             // create the db directory
-            logger.info("initializing database directory");
-            logger.info("maindb_path: %s", maindb_path);
-            fs.open(maindb_path, 'r', function (err, fd) {
-                if (err && err.code == 'ENOENT') {
-                    /* the DB directory doesn't exist */
-                    logger.info("Creating database directory ...");
-                    var dbdir_path = path.join(__dirname, 'db');
-                    try {
-                        fs.mkdirSync(dbdir_path);
-                    }
-                    catch (e) {
-                        logger.error("creating database error: %j", e);
-                    }
-                    try {
-                        fs.mkdirSync(maindb_path);
-                    }
-                    catch (e) {
-                        logger.error("creating database error: %j", e);
-                    }
-                    fs.open(maindb_path, 'r', function (err, fd) {
-                        if (err) {
-                            callback(err)
-                        }
-                        else {
-                            logger.info("DB directory created");
-                            callback();
-                        }
-                    });
+            logger.info("initializing 'maindb' database directory");
+            streembut_utils.ensure_dbdir_exists( "maindb", callback);
+        },    
+        function (callback) {
+            //create the main database
+            var maindb_path = path.join(__dirname, 'db', 'maindb');
+            streembit.maindbdb = levelup(maindb_path);
+            callback();
+        },
+        function (callback) {
+            // create the db directory
+            logger.info("initializing 'localdb' database directory");
+            streembut_utils.ensure_dbdir_exists("localdb", callback);
+        },    
+        function (callback) {
+            // bootstrap the app with the streembit network
+            logger.info("Get account " + config_node.account + " from the database");
+            //  is the account exists in the local db
+            streembit.accountsDB.get(config_node.account, function (err, account) {
+                if (err) {
+                    callback(err);
                 }
-                else {
-                    callback();
+                else{
+                    callback(null, account);
                 }
             });
-        },    
+        },   
+        function (account, callback) {
+            // bootstrap the app with the streembit network
+            if (account) {
+                logger.info("Initialize the account");
+                streembit.account.initialize(account, pksecret , callback);
+            }
+            else {
+                logger.info("Create a new account");
+                streembit.account.create(config_node.account, pksecret, callback);
+            }
+        },  
         function (callback) {
             // bootstrap the app with the streembit network
             logger.info("Bootstrap the network");
@@ -126,8 +152,7 @@ async.waterfall(
             
             // initialize the Peer Network
             logger.info("Connecting to Streembit network");
-            var maindb = levelup(maindb_path);
-            streembit.PeerNet.init(bootseeds, maindb).then(
+            streembit.PeerNet.init(bootseeds, streembit.maindbdb).then(
                 function () {
                     logger.debug("PeerNet is initialized");
                     streembit.seeds = bootseeds.seeds;
@@ -144,7 +169,6 @@ async.waterfall(
             logger.info("Validating Streembit network connection");
             streembit.PeerNet.validate_connection().then(
                 function () {
-                    appboot_msg_handler("PeerNet connection is validated");
                     logger.debug("PeerNet connection is validated");
                     callback(null);
                 },

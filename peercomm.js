@@ -1907,7 +1907,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
             });
         }
         catch (e) {
-            callback("Publish peer user error:  %j", e);
+            callback("Publish peer user error: " + e.message);
         }
     }
     
