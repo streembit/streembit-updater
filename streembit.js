@@ -73,6 +73,7 @@ streembit.bootclient = require("./bootclient");
 streembit.PeerNet = require("./peercomm").PeerNet;
 streembit.accountsDB = require("./streembitdb").accountsdb;
 streembit.account = require("./account");
+streembit.contacts = require("./contacts");
 
 var config_node = config.node;
 if (!config_node) {
@@ -213,6 +214,10 @@ async.waterfall(
                     callback(err);
                 }
             );
+        },
+        function (callback) {
+            // initialize the contacts
+            streembit.contacts.init(callback);
         },
         function (callback) {
             streembit.PeerNet.publish_account(callback);

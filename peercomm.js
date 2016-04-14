@@ -36,7 +36,7 @@ streembit.config = require("./config.json");
 streembit.DEFS = require("./appdefs.js");
 streembit.account = require("./account");
 streembit.Message = require("./message");
-
+streembit.ContactList = require("./contactlist");
 
 streembit.PeerTransport = (function (obj, logger, events, config ) {
     
@@ -179,6 +179,24 @@ streembit.PeerTransport = (function (obj, logger, events, config ) {
             is_gui_node: false,
             contact_exist_lookupfn: null
         };
+        
+        var contactsonly = false;
+        if (config.contactsonly) {
+            var list_of_contacts = [];
+            if (config.contacts && Array.isArray(config.contacts) && config.contacts.length > 0) {
+                for (var i = 0; i < config.contacts.length; i++) {
+                    if (!config.contacts[i].name) {
+                        continue;   
+                    }
+                    list_of_contacts.push(config.contacts[i].name);
+                }
+
+                if (list_of_contacts.length > 0) {
+                    options.contactonly = true;
+                    options.list_of_contacts = list_of_contacts;
+                }
+            }
+        }        
         
         try {
             var peernode = streembitkad(options);
@@ -1809,16 +1827,47 @@ streembit.PeerNet = (function (module, logger, events, config) {
             payload.type = wotmsg.MSGTYPE.PUBPK;
             payload[wotmsg.MSGFIELD.PUBKEY] = streembit.account.public_key;
             payload[wotmsg.MSGFIELD.ECDHPK] = streembit.account.ecdh_public_key;
-            payload[wotmsg.MSGFIELD.PROTOCOL] = config.transport;
-            payload[wotmsg.MSGFIELD.HOST] = streembit.account.address;
-            payload[wotmsg.MSGFIELD.PORT] = streembit.account.port;
-            payload[wotmsg.MSGFIELD.UTYPE] = streembit.DEFS.USER_TYPE_HUMAN;
             
             logger.debug("publish account: %j", payload);
             
+            var connection_data = {};
+            connection_data[wotmsg.MSGFIELD.ACCOUNT] = streembit.account.name;
+            connection_data[wotmsg.MSGFIELD.PROTOCOL] = config.transport;
+            connection_data[wotmsg.MSGFIELD.HOST] = streembit.account.address;
+            connection_data[wotmsg.MSGFIELD.PORT] = streembit.account.port;
+            connection_data[wotmsg.MSGFIELD.UTYPE] = streembit.DEFS.USER_TYPE_DEVICE;
+            
+            logger.debug("publish connection: %j", connection_data);
+            
+            var contacts = streembit.ContactList;
+            var contactlist = contacts.list();
+            
+            // create the encrypted symmetric key for the contacts
+            var random_bytes = secrand.randomBuffer(32);
+            var session_symmkey = nodecrypto.createHash('sha256').update(random_bytes).digest().toString('hex');
+            
+            var plaindata = { symmetric_key: session_symmkey };
+            
+            var symmkey_array = [];
+            for (var i = 0; i < contactlist.length; i++) {
+                var ecdh_public = contactlist[i].ecdh_public;
+                var symmkey_cipher = wotmsg.ecdh_encypt(streembit.account.ecdh_key, ecdh_public, plaindata);
+                var arritem = { account: contactlist[i].name, symmkey: plaindata };
+                symmkey_array.push(arritem);
+            }
+            
+            payload["contactskeys"] = symmkey_array;   
+            
+            // encrypt the data with the symmetric key
+            var cipher = streembit.Message.aes256encrypt(session_symmkey, JSON.stringify(connection_data));
+            payload[wotmsg.MSGFIELD.CIPHER] = cipher;
+
             var value = wotmsg.create(streembit.account.private_key, streembit.Message.create_id(), payload);
             var key = streembit.account.name;
-            
+
+            // create hash
+            // var key = nodecrypto.createHash('sha1').update(streembit.account.name).digest('hex'); //;  
+
             //  For this public key upload message the key is the device name
             streembit.Node.put(key, value, function (err, results) {
                 if (err) {
@@ -1937,4 +1986,5 @@ streembit.PeerNet = (function (module, logger, events, config) {
 //  exports
 module.exports.PeerNet = streembit.PeerNet;
 module.exports.Message = streembit.Message;
+module.exports.Node = streembit.Node;
 

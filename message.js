@@ -28,7 +28,6 @@ var nodecrypto = require(global.cryptolib);
 var wotmsg = require("streembitlib/message/wotmsg");
 var uuid = require("uuid");
 
-
 streembit.Message = (function (msgobj, logger, events) {
     
     msgobj.getvalue = function (val) {
