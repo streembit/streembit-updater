@@ -2,7 +2,7 @@
     "node": {
         "account": "pitest0001",
         "address": "localhost",
-        "port": 32320,
+        "port": 32321,
         "seeds": ["seed.streemio.org", "seed.streemio.net", "seed.streemio.biz", "seed.streemio.co"]
     },
     "log": {
@@ -10,13 +10,11 @@
     },
     "transport":  "tcp",
     "private_network": false,
-    "private_network_accounts": [],
-    "devices": [ ],
-    "contactsonly": true,
-    "contacts": [
+    "private_network_accounts": [ ],
+    "devices": [
         {
-            "name": "pitest0002",
-            "public_key": "03fe389c6d379eb6b53db26ac45fba1e6630f5e61923e509aa1fcf7cadd2b67920"
+            "device": "ds18b20",
+            "sample_interval": 5000
         }
     ]
 
