@@ -49,13 +49,13 @@ streembit.PeerTransport = (function (obj, logger, events, config ) {
     function onPeerMessage(message, info) {
         try {
             if (!message) {
-                return streembit.notify.error("Invalid message at onPeerMessage");
+                return logger.error("Invalid message at onPeerMessage");
             }
             if (!message.type || message.type != "PEERMSG") {
-                return streembit.notify.error("Invalid message type at onPeerMessage");
+                return logger.error("Invalid message type at onPeerMessage");
             }
             if (!message.data) {
-                return streembit.notify.error("Invalid message data at onPeerMessage");
+                return logger.error("Invalid message data at onPeerMessage");
             }
             
             //  raise an application event that a peer sent a message
@@ -618,7 +618,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
                         var handler = list_of_waithandlers[msg.jti];
                         if (handler && handler.waitfunc && handler.rejectfunc && handler.resolvefunc) {
                             try {
-                                streembit.notify.hideprogress();
+                                //streembit.notify.hideprogress();
                                 clearTimeout(handler.waitfunc);
                                 return handler.rejectfunc(err);
                             }
@@ -630,7 +630,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
             
             if (!ishandled) {
                 //TODO don't show all errors
-                streembit.notify.error("onPeerError error %j", err);
+                logger.error("onPeerError error %j", err);
             }
         }
         catch (e) {
@@ -643,7 +643,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
         var handler = list_of_waithandlers[jti];
         if (handler) {
             try {
-                streembit.notify.hideprogress();
+                //logger.hideprogress();
             }
             catch (e) { }
             
@@ -694,7 +694,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
             closeWaithandler(jti);
         }
         catch (e) {
-            streembit.notify.error("handleAcceptKey error %j", e);
+            logger.error("handleAcceptKey error %j", e);
         }
     }
     
@@ -742,7 +742,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
             };
         }
         catch (e) {
-            streembit.notify.error("handleKeyExchange error %j", e);
+            logger.error("handleKeyExchange error %j", e);
         }
     }
     
@@ -789,7 +789,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
             
         }
         catch (e) {
-            streembit.notify.error("handlePing error %j", e);
+            logger.error("handlePing error %j", e);
         }
     }
     
@@ -815,7 +815,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
             streembit.Contacts.on_online(sender);
         }
         catch (e) {
-            streembit.notify.error("handlePingReply error %j", e);
+            logger.error("handlePingReply error %j", e);
         }
     }
     
@@ -833,7 +833,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
 
         }
         catch (e) {
-            streembit.notify.error("handleCallReply error %j", e);
+            logger.error("handleCallReply error %j", e);
         }
     }
     
@@ -867,7 +867,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
             });
         }
         catch (e) {
-            streembit.notify.error("handleCall error %j", e);
+            logger.error("handleCall error %j", e);
         }
     }
     
@@ -892,7 +892,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
 
         }
         catch (e) {
-            streembit.notify.error("handleCallReply error %j", e);
+            logger.error("handleCallReply error %j", e);
         }
     }
     
@@ -935,7 +935,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
             });
         }
         catch (e) {
-            streembit.notify.error("handleCall error %j", e);
+            logger.error("handleCall error %j", e);
         }
     }
     
@@ -959,7 +959,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
 
         }
         catch (e) {
-            streembit.notify.error("handleCallReply error %j", e);
+            logger.error("handleCallReply error %j", e);
         }
     }
     
@@ -993,7 +993,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
 
         }
         catch (e) {
-            streembit.notify.error("handleFileInit error %j", e);
+            logger.error("handleFileInit error %j", e);
         }
     }
     
@@ -1016,7 +1016,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
 
         }
         catch (e) {
-            streembit.notify.error("handleCallReply error %j", e);
+            logger.error("handleCallReply error %j", e);
         }
     }
     
@@ -1039,7 +1039,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
             // close, don't reply here
         }
         catch (e) {
-            streembit.notify.error("handleAddContactRequest error %j", e);
+            logger.error("handleAddContactRequest error %j", e);
         }
     }
     
@@ -1061,7 +1061,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
             // close, don't reply here
         }
         catch (e) {
-            streembit.notify.error("handleAddContactRequest error %j", e);
+            logger.error("handleAddContactRequest error %j", e);
         }
     }
     
@@ -1083,7 +1083,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
             // close, don't reply here
         }
         catch (e) {
-            streembit.notify.error("handleAddContactDenyReply error %j", e);
+            logger.error("handleAddContactDenyReply error %j", e);
         }
     }
     
@@ -1117,7 +1117,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
                         }
                     }
                     catch (e) {
-                        streembit.notify.error("Error in handling chat message %j", e);
+                        logger.error("Error in handling chat message %j", e);
                     }
                     break;
 
@@ -1165,7 +1165,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
             }
         }
         catch (e) {
-            streembit.notify.error("handleSymmMessage error %j", e);
+            logger.error("handleSymmMessage error %j", e);
         }
     }
     
@@ -1306,7 +1306,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
             }
         }
         catch (err) {
-            streembit.notify.error("onPeerMessage error %j", err);
+            logger.error("onPeerMessage error %j", err);
         }
     }
     
@@ -1346,7 +1346,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
                             
                             try {
                                 if (showprog) {
-                                    streembit.notify.hideprogress();
+                                    //streembit.notify.hideprogress();
                                 }
                                 reject("TIMEDOUT");
                                 delete list_of_waithandlers[jti];
@@ -1369,7 +1369,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
                 list_of_waithandlers[jti] = waithandler;
                 
                 if (showprog) {
-                    streembit.notify.showprogress("Waiting reply from peer ... ");
+                    //streembit.notify.showprogress("Waiting reply from peer ... ");
                 }
                 
                 logger.debug("wait peer complete jti: " + jti);
@@ -1470,14 +1470,14 @@ streembit.PeerNet = (function (module, logger, events, config) {
             // put the message to the network
             streembit.Node.put(key, value, function (err) {
                 if (err) {
-                    return streembit.notify.error("Send off-line message error %j", err);
+                    return logger.error("Send off-line message error %j", err);
                 }
                 logger.debug("sent off-line message " + key);
                 callback();
             });
         }
         catch (e) {
-            streembit.notify.error("send_offline_message error %j", e);
+            logger.error("send_offline_message error %j", e);
         }
     }
     
@@ -1504,14 +1504,14 @@ streembit.PeerNet = (function (module, logger, events, config) {
             // put the message to the network
             streembit.Node.put(key, value, function (err) {
                 if (err) {
-                    return streembit.notify.error("Send off-line message error %j", err);
+                    return logger.error("Send off-line message error %j", err);
                 }
                 logger.debug("sent persistent addcontact request " + key);
                 callback();
             });
         }
         catch (e) {
-            streembit.notify.error("send_offline_message error %j", e);
+            logger.error("send_offline_message error %j", e);
         }
     }
     
@@ -1538,14 +1538,14 @@ streembit.PeerNet = (function (module, logger, events, config) {
             // put the message to the network
             streembit.Node.put(key, value, function (err) {
                 if (err) {
-                    return streembit.notify.error("declinecontact_message error %j", err);
+                    return logger.error("declinecontact_message error %j", err);
                 }
                 logger.debug("sent persistent declinecontact_message request " + key);
                 callback();
             });
         }
         catch (e) {
-            streembit.notify.error("declinecontact_message error %j", e);
+            logger.error("declinecontact_message error %j", e);
         }
     }
     
@@ -1571,7 +1571,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
             streembit.Node.peer_send(contact, encoded_msgbuffer);
         }
         catch (e) {
-            streembit.notify.error("send_peer_message error %j", e);
+            logger.error("send_peer_message error %j", e);
         }
     }
     
@@ -1625,7 +1625,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
             streembit.Node.peer_send(contact, encoded_msgbuffer);
         }
         catch (err) {
-            streembit.notify.error("send_addcontact_request error:  %j", err);
+            logger.error("send_addcontact_request error:  %j", err);
         }
     }
     
@@ -1639,7 +1639,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
             streembit.Node.peer_send(contact, encoded_msgbuffer);
         }
         catch (err) {
-            streembit.notify.error("send_addcontact_request error:  %j", err);
+            logger.error("send_addcontact_request error:  %j", err);
         }
     }
     
@@ -1653,7 +1653,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
             streembit.Node.peer_send(contact, encoded_msgbuffer);
         }
         catch (err) {
-            streembit.notify.error("send_addcontact_request error:  %j", err);
+            logger.error("send_addcontact_request error:  %j", err);
         }
     }
     
@@ -1770,14 +1770,14 @@ streembit.PeerNet = (function (module, logger, events, config) {
             
             streembit.Node.get_account_messages(streembit.User.name, msgkey, function (err, result) {
                 if (err) {
-                    return streembit.notify.error("get_account_messages error:  %j", err);
+                    return logger.error("get_account_messages error:  %j", err);
                 }
                 
                 events.emit(events.APPEVENT, events.TYPES.ONACCOUNTMSG, result);
             });
         }
         catch (e) {
-            streembit.notify.error("get_account_messages error:  %j", e);
+            logger.error("get_account_messages error:  %j", e);
         }
     }
     
@@ -1786,7 +1786,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
             streembit.Node.delete_item(key, request);
         }
         catch (e) {
-            streembit.notify.error("delete_item error:  %j", e);
+            logger.error("delete_item error:  %j", e);
         }
     }
     
@@ -1810,7 +1810,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
             });
         }
         catch (e) {
-            streembit.notify.error("delete_message error:  %j", e);
+            logger.error("delete_message error:  %j", e);
         }
     }
     
@@ -1897,7 +1897,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
     module.publish_account = function (callback) {
         try {
             if (!callback) {
-                return streembit.notify.error("publish_user error: invalid callback parameter")
+                return logger.error("publish_user error: invalid callback parameter")
             }
             
             //  publishing user data

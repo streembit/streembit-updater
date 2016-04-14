@@ -114,7 +114,7 @@ streembit.Contacts = (function (contactsobj, logger, events, config) {
     
     function ping_contact(account) {
         if (!account) {
-            return streembit.notify.error("ping_contact error: invalid parameters");
+            return logger.error("ping_contact error: invalid parameters");
         }
         
         var contact = contactsobj.get_contact(account);
@@ -221,7 +221,7 @@ streembit.Contacts = (function (contactsobj, logger, events, config) {
             });
         }
         catch (err) {
-            streembit.notify.error("Contact search error %j", err)
+            logger.error("Contact search error %j", err)
         }
     }
     
