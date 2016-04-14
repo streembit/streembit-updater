@@ -496,22 +496,85 @@ streembit.PeerNet = (function (module, logger, events, config) {
                 var payload = wotmsg.getpayload(msg);
                 if (!payload || !payload.data || !payload.data.type || payload.data.type != wotmsg.MSGTYPE.PUBPK 
                             || payload.data[wotmsg.MSGFIELD.PUBKEY] == null || payload.data[wotmsg.MSGFIELD.ECDHPK] == null) {
-                    return callback("get_contact error: invalid contact payload");
+                    return callback("find_contact error: invalid contact payload");
                 }
                 
                 var decoded = wotmsg.decode(msg, payload.data[wotmsg.MSGFIELD.PUBKEY]);
                 if (!decoded || !decoded.data[wotmsg.MSGFIELD.PUBKEY]) {
-                    return callback("get_contact error: invalid decoded contact payload");
+                    return callback("find_contact error: invalid decoded contact payload");
                 }
                 
                 logger.debug("find_contact decoded: %j", decoded);
  
                 var pkey = decoded.data[wotmsg.MSGFIELD.PUBKEY];
+                if (!pkey) {
+                    return callback("find_contact error: no public key was published by contact " + account);
+                }
+
                 var ecdhpk = decoded.data[wotmsg.MSGFIELD.ECDHPK];
-                var address = decoded.data[wotmsg.MSGFIELD.HOST];
-                var port = decoded.data[wotmsg.MSGFIELD.PORT];
-                var utype = decoded.data[wotmsg.MSGFIELD.UTYPE];
-                var protocol = wotmsg.MSGFIELD.PROTOCOL ? decoded.data[wotmsg.MSGFIELD.PROTOCOL] : streembit.DEFS.TRANSPORT_TCP;
+                if (!ecdhpk) {
+                    return callback("find_contact error: no ecdhpk key was published by contact " + account);
+                }
+                
+                var cipher = decoded.data[wotmsg.MSGFIELD.CIPHER];
+                if (!cipher) {
+                    return callback("find_contact error: no enncrypted contact details was published by contact " + account);
+                }
+                
+                // find the ecdh symmetric key data
+                var contactskeys = decoded.data["contactskeys"];
+                if (!contactskeys || !Array.isArray(contactskeys)) {
+                    return callback("find_contact error: no contactskeys field was published from contact " + account);
+                }
+                
+                var symmkey = null;
+                for (var i = 0; i < contactskeys.length; i++) {
+                    if( contactskeys[i].account == streembit.account.name) {
+                        symmkey = contactskeys[i].symmkey;
+                        break;
+                    }
+                }
+                
+                if (!symmkey) {
+                    return callback("find_contact error: no symmkey field is published from contact " + account);
+                }
+                
+                // decrypt the symmkey fild
+                var plaintext = wotmsg.ecdh_decrypt(streembit.account.ecdh_key, ecdhpk, symmkey);
+                var keydata = JSON.parse(plaintext);
+                var session_symmkey = keydata.symmetric_key;
+                if (!session_symmkey) {
+                    return callback("invalid session symmetric key for contact " + sender);
+                }
+                
+                // decrypt the cipher with the session_symmkey
+                var plaintext = streembit.Message.aes256decrypt(session_symmkey, cipher);
+                var connection = JSON.parse(plaintext);
+                if (!connection) {
+                    return callback("find_contact error: no connection details field is published from contact " + account);
+                }
+                
+                if (connection.account != account) {
+                    return callback("find_contact error: account mismatch was published from contact " + account);
+                }
+
+                var address = connection[wotmsg.MSGFIELD.HOST];
+                if (!address) {
+                    return callback("find_contact error: no address field is published from contact " + account);
+                }
+
+                var port = connection[wotmsg.MSGFIELD.PORT];
+                if (!port) {
+                    return callback("find_contact error: no port field is published from contact " + account);
+                }
+                
+                var protocol = connection[wotmsg.MSGFIELD.PROTOCOL];
+                if (!protocol) {
+                    return callback("find_contact error: no protocol field is published from contact " + account);
+                }
+
+                var utype = connection[wotmsg.MSGFIELD.UTYPE];
+                
                 var contact = {
                     public_key: pkey, 
                     ecdh_public: ecdhpk, 

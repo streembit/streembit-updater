@@ -26,6 +26,7 @@ Copyright (C) 2016 The Streembit software development team
 var streembit = streembit || {};
 
 streembit.config = require("./config.json");
+streembit.DEFS = require("./appdefs.js");
 
 streembit.ContactList = (function (listobj, logger, events, config) {
 
