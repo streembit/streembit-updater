@@ -34,7 +34,7 @@ var nodecrypto = require(global.cryptolib);
 var streembitkad = require('streembitlib/streembitkad/kaddht');
 streembit.config = require("./config.json");
 streembit.DEFS = require("./appdefs.js");
-streembit.account = require("./account");
+streembit.User = require("./account");
 streembit.Message = require("./message");
 streembit.ContactList = require("./contactlist");
 
@@ -216,8 +216,8 @@ streembit.PeerTransport = (function (obj, logger, events, config ) {
                     return resultfn("Invalid peer address and port");
                 }
                 
-                streembit.account.address = address;
-                streembit.account.port = port;
+                streembit.User.address = address;
+                streembit.User.port = port;
                 
                 obj.node.is_seedcontact_exists(function (result) {
                     if (result) {
@@ -338,7 +338,7 @@ streembit.PeerTransport = (function (obj, logger, events, config ) {
     
     return obj;
 
-}(streembit.PeerTransport || {}, global.applogger, global.appevents, streembit.config, streembit.MainDB));
+}(streembit.PeerTransport || {}, global.applogger, global.appevents, streembit.config));
 
 
 streembit.TransportFactory = (function (module, logger, events, config) {
@@ -488,6 +488,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
     module.find_contact = function (account, callback) {
         streembit.Node.find(account, function (err, msg) {
             try {
+                
                 if (err) {
                     return callback(err);
                 }
@@ -496,96 +497,106 @@ streembit.PeerNet = (function (module, logger, events, config) {
                 var payload = wotmsg.getpayload(msg);
                 if (!payload || !payload.data || !payload.data.type || payload.data.type != wotmsg.MSGTYPE.PUBPK 
                             || payload.data[wotmsg.MSGFIELD.PUBKEY] == null || payload.data[wotmsg.MSGFIELD.ECDHPK] == null) {
-                    return callback("find_contact error: invalid contact payload");
+                    return callback("get_contact error: invalid contact payload");
                 }
                 
                 var decoded = wotmsg.decode(msg, payload.data[wotmsg.MSGFIELD.PUBKEY]);
                 if (!decoded || !decoded.data[wotmsg.MSGFIELD.PUBKEY]) {
-                    return callback("find_contact error: invalid decoded contact payload");
+                    return callback("get_contact error: invalid decoded contact payload");
                 }
                 
-                //logger.debug("find_contact decoded: %j", decoded);
- 
                 var pkey = decoded.data[wotmsg.MSGFIELD.PUBKEY];
                 if (!pkey) {
                     return callback("find_contact error: no public key was published by contact " + account);
                 }
-
+                
                 var ecdhpk = decoded.data[wotmsg.MSGFIELD.ECDHPK];
                 if (!ecdhpk) {
                     return callback("find_contact error: no ecdhpk key was published by contact " + account);
                 }
                 
                 var cipher = decoded.data[wotmsg.MSGFIELD.CIPHER];
-                if (!cipher) {
-                    return callback("find_contact error: no enncrypted contact details was published by contact " + account);
-                }
-                
-                // find the ecdh symmetric key data
                 var contactskeys = decoded.data["contactskeys"];
-                if (!contactskeys || !Array.isArray(contactskeys)) {
-                    return callback("find_contact error: no contactskeys field was published from contact " + account);
-                }
-                
-                var symmkey = null;
-                for (var i = 0; i < contactskeys.length; i++) {
-                    if( contactskeys[i].account == streembit.account.name) {
-                        symmkey = contactskeys[i].symmkey;
-                        break;
+                if (cipher && contactskeys && Array.isArray(contactskeys)) {
+                    
+                    var symmkey = null;
+                    for (var i = 0; i < contactskeys.length; i++) {
+                        if (contactskeys[i].account == streembit.User.name) {
+                            symmkey = contactskeys[i].symmkey;
+                            break;
+                        }
                     }
+                    
+                    if (!symmkey) {
+                        return callback("find_contact error: no symmkey field is published from contact " + account);
+                    }
+                    
+                    // decrypt the symmkey fild
+                    var plaintext = wotmsg.ecdh_decrypt(streembit.User.ecdh_key, ecdhpk, symmkey);
+                    var keydata = JSON.parse(plaintext);
+                    var session_symmkey = keydata.symmetric_key;
+                    if (!session_symmkey) {
+                        return callback("invalid session symmetric key for contact " + sender);
+                    }
+                    
+                    // decrypt the cipher with the session_symmkey
+                    var plaintext = streembit.Message.aes256decrypt(session_symmkey, cipher);
+                    var connection = JSON.parse(plaintext);
+                    if (!connection) {
+                        return callback("find_contact error: no connection details field is published from contact " + account);
+                    }
+                    
+                    if (connection.account != account) {
+                        return callback("find_contact error: account mismatch was published from contact " + account);
+                    }
+                    
+                    var address = connection[wotmsg.MSGFIELD.HOST];
+                    if (!address) {
+                        return callback("find_contact error: no address field is published from contact " + account);
+                    }
+                    
+                    var port = connection[wotmsg.MSGFIELD.PORT];
+                    if (!port) {
+                        return callback("find_contact error: no port field is published from contact " + account);
+                    }
+                    
+                    var protocol = connection[wotmsg.MSGFIELD.PROTOCOL];
+                    if (!protocol) {
+                        return callback("find_contact error: no protocol field is published from contact " + account);
+                    }
+                    
+                    var utype = connection[wotmsg.MSGFIELD.UTYPE];
+                    
+                    var contact = {
+                        public_key: pkey, 
+                        ecdh_public: ecdhpk, 
+                        address: address, 
+                        port: port, 
+                        name: account, 
+                        user_type: utype, 
+                        protocol: protocol
+                    };
+                    
+                    callback(null, contact);
                 }
-                
-                if (!symmkey) {
-                    return callback("find_contact error: no symmkey field is published from contact " + account);
-                }
-                
-                // decrypt the symmkey fild
-                var plaintext = wotmsg.ecdh_decrypt(streembit.account.ecdh_key, ecdhpk, symmkey);
-                var keydata = JSON.parse(plaintext);
-                var session_symmkey = keydata.symmetric_key;
-                if (!session_symmkey) {
-                    return callback("invalid session symmetric key for contact " + sender);
-                }
-                
-                // decrypt the cipher with the session_symmkey
-                var plaintext = streembit.Message.aes256decrypt(session_symmkey, cipher);
-                var connection = JSON.parse(plaintext);
-                if (!connection) {
-                    return callback("find_contact error: no connection details field is published from contact " + account);
-                }
-                
-                if (connection.account != account) {
-                    return callback("find_contact error: account mismatch was published from contact " + account);
-                }
+                else {
+                    var address = decoded.data[wotmsg.MSGFIELD.HOST];
+                    var port = decoded.data[wotmsg.MSGFIELD.PORT];
+                    var utype = decoded.data[wotmsg.MSGFIELD.UTYPE];
+                    var protocol = wotmsg.MSGFIELD.PROTOCOL ? decoded.data[wotmsg.MSGFIELD.PROTOCOL] : streembit.DEFS.TRANSPORT_TCP;
+                    var contact = {
+                        public_key: pkey, 
+                        ecdh_public: ecdhpk, 
+                        address: address, 
+                        port: port, 
+                        name: account, 
+                        user_type: utype, 
+                        protocol: protocol
+                    };
+                    
+                    callback(null, contact);
+                }                
 
-                var address = connection[wotmsg.MSGFIELD.HOST];
-                if (!address) {
-                    return callback("find_contact error: no address field is published from contact " + account);
-                }
-
-                var port = connection[wotmsg.MSGFIELD.PORT];
-                if (!port) {
-                    return callback("find_contact error: no port field is published from contact " + account);
-                }
-                
-                var protocol = connection[wotmsg.MSGFIELD.PROTOCOL];
-                if (!protocol) {
-                    return callback("find_contact error: no protocol field is published from contact " + account);
-                }
-
-                var utype = connection[wotmsg.MSGFIELD.UTYPE];
-                
-                var contact = {
-                    public_key: pkey, 
-                    ecdh_public: ecdhpk, 
-                    address: address, 
-                    port: port, 
-                    name: account, 
-                    user_type: utype, 
-                    protocol: protocol
-                };
-                
-                callback(null, contact);
             }
             catch (e) {
                 callback("get_contact error: " + e.message);
@@ -1890,7 +1901,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
             }
             
             //  publishing user data
-            if (!streembit.account.public_key || !streembit.account.ecdh_public_key || !streembit.account.address || !streembit.account.port) {
+            if (!streembit.User.public_key || !streembit.User.ecdh_public_key || !streembit.User.address || !streembit.User.port) {
                 return callback("invalid user context data");
             }
             
@@ -1899,16 +1910,16 @@ streembit.PeerNet = (function (module, logger, events, config) {
             // create the WoT message 
             var payload = {};
             payload.type = wotmsg.MSGTYPE.PUBPK;
-            payload[wotmsg.MSGFIELD.PUBKEY] = streembit.account.public_key;
-            payload[wotmsg.MSGFIELD.ECDHPK] = streembit.account.ecdh_public_key;
+            payload[wotmsg.MSGFIELD.PUBKEY] = streembit.User.public_key;
+            payload[wotmsg.MSGFIELD.ECDHPK] = streembit.User.ecdh_public_key;
             
             logger.debug("publish account: %j", payload);
             
             var connection_data = {};
-            connection_data[wotmsg.MSGFIELD.ACCOUNT] = streembit.account.name;
+            connection_data[wotmsg.MSGFIELD.ACCOUNT] = streembit.User.name;
             connection_data[wotmsg.MSGFIELD.PROTOCOL] = config.transport;
-            connection_data[wotmsg.MSGFIELD.HOST] = streembit.account.address;
-            connection_data[wotmsg.MSGFIELD.PORT] = streembit.account.port;
+            connection_data[wotmsg.MSGFIELD.HOST] = streembit.User.address;
+            connection_data[wotmsg.MSGFIELD.PORT] = streembit.User.port;
             connection_data[wotmsg.MSGFIELD.UTYPE] = streembit.DEFS.USER_TYPE_DEVICE;
             
             logger.debug("publish connection: %j", connection_data);
@@ -1925,7 +1936,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
             var symmkey_array = [];
             for (var i = 0; i < contactlist.length; i++) {
                 var ecdh_public = contactlist[i].ecdh_public;
-                var symmkey_cipher = wotmsg.ecdh_encypt(streembit.account.ecdh_key, ecdh_public, plaindata);
+                var symmkey_cipher = wotmsg.ecdh_encypt(streembit.User.ecdh_key, ecdh_public, plaindata);
                 var arritem = { account: contactlist[i].name, symmkey: symmkey_cipher };
                 symmkey_array.push(arritem);
             }
@@ -1936,11 +1947,11 @@ streembit.PeerNet = (function (module, logger, events, config) {
             var cipher = streembit.Message.aes256encrypt(session_symmkey, JSON.stringify(connection_data));
             payload[wotmsg.MSGFIELD.CIPHER] = cipher;
 
-            var value = wotmsg.create(streembit.account.private_key, streembit.Message.create_id(), payload);
-            var key = streembit.account.name;
+            var value = wotmsg.create(streembit.User.private_key, streembit.Message.create_id(), payload);
+            var key = streembit.User.name;
 
             // create hash
-            // var key = nodecrypto.createHash('sha1').update(streembit.account.name).digest('hex'); //;  
+            // var key = nodecrypto.createHash('sha1').update(streembit.User.name).digest('hex'); //;  
 
             //  For this public key upload message the key is the device name
             streembit.Node.put(key, value, function (err, results) {
