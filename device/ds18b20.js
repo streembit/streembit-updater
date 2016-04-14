@@ -32,12 +32,12 @@ function Sensor(options) {
 
     EventEmitter.call(this);
     
+    this.device = 0;
     this.logger = options.logger;
     this.sample_interval = options.sample_interval;
 
     this.init();
 }
-
 
 Sensor.prototype.init = function () {
     try {
@@ -74,7 +74,6 @@ Sensor.prototype.init = function () {
     }    
 }
 
-
 Sensor.prototype.read_loop = function () {
     try {
                 
@@ -99,7 +98,6 @@ Sensor.prototype.read_loop = function () {
                             return self.logger.error('ds18b20 read temperature error: %j', err);     
                         }
 
-                        self.logger.debug("temperature: " + temperature);
                         // raise the event
                         self.emit("temperature", temperature);
                     });
@@ -110,6 +108,9 @@ Sensor.prototype.read_loop = function () {
             },
             this.sample_interval
         );
+        
+        // set the device
+        this.device = device;
 
     }
     catch (err) {
@@ -117,6 +118,33 @@ Sensor.prototype.read_loop = function () {
     }
 }
 
+Sensor.prototype.read = function (callback) {
+    try {
+                
+        if (!this.device) {
+            var list_of_sensors = ds18b20.list();
+
+            if (!list_of_sensors || list_of_sensors.length == 0) {
+                return callback("no sensor device exists");
+            }
+            
+            this.device = list_of_sensors[0];
+        }
+ 
+        ds18b20.get(this.device, function (err, temperature) {
+            if (err) {
+                callback('ds18b20 read temperature error: ' + err.message);
+            }
+            else {
+                callback(null, temperature);
+            }
+        });            
+
+    }
+    catch (err) {
+        callback('ds18b20 read error:' + err.message);
+    }
+}
 
 module.exports.init_sensor = function(options) {
     return new Sensor(options);
