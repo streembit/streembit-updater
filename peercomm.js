@@ -504,7 +504,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
                     return callback("find_contact error: invalid decoded contact payload");
                 }
                 
-                logger.debug("find_contact decoded: %j", decoded);
+                //logger.debug("find_contact decoded: %j", decoded);
  
                 var pkey = decoded.data[wotmsg.MSGFIELD.PUBKEY];
                 if (!pkey) {
@@ -1138,6 +1138,15 @@ streembit.PeerNet = (function (module, logger, events, config) {
                 case streembit.DEFS.PEERMSG_FEXIT:
                     //logger.debug("PEERMSG_FSEND message received");
                     events.emit(events.APPEVENT, events.TYPES.ONFILECANCEL, data);
+                    break;
+
+                case streembit.DEFS.PEERMSG_DEVDESC_REQ:
+                    logger.debug("PEERMSG_DEVDESC_REQ message received");
+                    events.emit(events.APPEVENT, "devdesc_request", data);
+                    break;
+
+                case streembit.DEFS.PEERMSG_DEVDESC:
+                    logger.debug("PEERMSG_DEVDESC message received");
                     break;
 
                 default:

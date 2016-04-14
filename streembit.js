@@ -55,10 +55,9 @@ global.streembit_node = 0;
 var logger = require("streembitlib/logger/logger");
 global.applogger = logger;
 
-if (!global.appevents) {
-    var AppEvents = require("streembitlib/events/AppEvents");
-    global.appevents = new AppEvents();
-}
+var AppEvents = require("streembitlib/events/AppEvents");
+var appevents = new AppEvents();
+global.appevents = appevents;
 
 var assert = require('assert');
 var path = require('path');
@@ -236,3 +235,14 @@ async.waterfall(
     }
 );
 
+
+appevents.on(appevents.APPEVENT, function (eventcmd, payload, info) {
+    
+    if (eventcmd == events.TYPES.ONPEERMSG) {
+        streembit.PeerNet.onPeerMessage(payload, info);
+    }
+    else if (eventcmd == "devdesc_request") {
+
+    }
+
+});

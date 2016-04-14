@@ -23,6 +23,21 @@ var util = require("util");
 var EventEmitter = require("events").EventEmitter;
 var ds18b20 = require('ds18x20');
 
+var device_definition = {
+    "name": "Temperature Sensor",
+    "model": {
+        "@device": {
+            "type": "DS18B20"
+        },
+        "@properties": {
+            "temperature": {
+                "type": "numeric",
+                "unit": "celsius"
+            }
+        }
+    }
+};
+
 util.inherits(Sensor, EventEmitter);
 
 function Sensor(options) {
