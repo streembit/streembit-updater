@@ -504,6 +504,8 @@ streembit.PeerNet = (function (module, logger, events, config) {
                     return callback("get_contact error: invalid decoded contact payload");
                 }
                 
+                logger.debug("find_contact decoded: %j", decoded);
+ 
                 var pkey = decoded.data[wotmsg.MSGFIELD.PUBKEY];
                 var ecdhpk = decoded.data[wotmsg.MSGFIELD.ECDHPK];
                 var address = decoded.data[wotmsg.MSGFIELD.HOST];
@@ -1852,7 +1854,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
             for (var i = 0; i < contactlist.length; i++) {
                 var ecdh_public = contactlist[i].ecdh_public;
                 var symmkey_cipher = wotmsg.ecdh_encypt(streembit.account.ecdh_key, ecdh_public, plaindata);
-                var arritem = { account: contactlist[i].name, symmkey: plaindata };
+                var arritem = { account: contactlist[i].name, symmkey: symmkey_cipher };
                 symmkey_array.push(arritem);
             }
             
