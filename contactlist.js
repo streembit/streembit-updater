@@ -80,6 +80,10 @@ streembit.ContactList = (function (listobj, logger, events, config) {
         }
     };
     
+    listobj.update_contact_database = function (contact, callback) {
+        listobj.update(contact.name, contact, callback);
+    };
+    
     listobj.exists = function (account) {
         var isexists = false;
         for (var i = 0; i < listobj.contacts.length; i++) {
@@ -117,6 +121,15 @@ streembit.ContactList = (function (listobj, logger, events, config) {
             array.push(listobj.contacts[i]);
         }
         return array;
+    }
+    
+    listobj.on_online = function (contact) {
+        for (var i = 0; i < listobj.contacts.length; i++) {
+            if (listobj.contacts[i].name == contact.name) {
+                listobj.contacts[i].isonline = true;
+                break;
+            }
+        }
     }
 
     return listobj;

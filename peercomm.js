@@ -497,12 +497,12 @@ streembit.PeerNet = (function (module, logger, events, config) {
                 var payload = wotmsg.getpayload(msg);
                 if (!payload || !payload.data || !payload.data.type || payload.data.type != wotmsg.MSGTYPE.PUBPK 
                             || payload.data[wotmsg.MSGFIELD.PUBKEY] == null || payload.data[wotmsg.MSGFIELD.ECDHPK] == null) {
-                    return callback("get_contact error: invalid contact payload");
+                    return callback("find_contact error: invalid contact payload");
                 }
                 
                 var decoded = wotmsg.decode(msg, payload.data[wotmsg.MSGFIELD.PUBKEY]);
                 if (!decoded || !decoded.data[wotmsg.MSGFIELD.PUBKEY]) {
-                    return callback("get_contact error: invalid decoded contact payload");
+                    return callback("find_contact error: invalid decoded contact payload");
                 }
                 
                 var pkey = decoded.data[wotmsg.MSGFIELD.PUBKEY];
@@ -599,7 +599,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
 
             }
             catch (e) {
-                callback("get_contact error: " + e.message);
+                callback("find_contact error: " + e.message);
             }
         });
     }
@@ -726,7 +726,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
             var data = {};
             data[wotmsg.MSGFIELD.REQJTI] = payload.jti;
             
-            var contact = streembit.Contacts.get_contact(sender);
+            var contact = streembit.ContactList.get(sender);
             var jti = streembit.Message.create_id();
             var encoded_msgbuffer = wotmsg.create_symm_msg(wotmsg.PEERMSG.ACCK, jti, streembit.User.private_key, session_symmkey, data, streembit.User.name, sender);
             streembit.Node.peer_send(contact, encoded_msgbuffer);
@@ -769,7 +769,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
             data[wotmsg.MSGFIELD.REQJTI] = payload.jti;
             data[wotmsg.MSGFIELD.ECDHPK] = streembit.User.ecdh_public_key;
             
-            var contact = streembit.Contacts.get_contact(sender);
+            var contact = streembit.ContactList.get(sender);
             if (!contact) {
                 throw new Error("Ping error: contact not exists");
             }
@@ -778,13 +778,13 @@ streembit.PeerNet = (function (module, logger, events, config) {
             contact.port = port;
             contact.protocol = protocol;
             // update the contact with the latest address, port adn protocol data
-            streembit.Contacts.update_contact_database(contact, function () {
+            streembit.ContactList.update_contact_database(contact, function () {
                 var jti = streembit.Message.create_id();
                 var encoded_msgbuffer = wotmsg.create_msg(wotmsg.PEERMSG.PREP, jti, streembit.User.private_key, data, streembit.User.name, sender);
                 streembit.Node.peer_send(contact, encoded_msgbuffer);
                 
                 // update the contact online indicator
-                streembit.Contacts.on_online(sender);
+                streembit.ContactList.on_online(sender);
             });
             
         }
@@ -812,7 +812,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
             closeWaithandler(jti);
             
             // update the contact online indicator
-            streembit.Contacts.on_online(sender);
+            streembit.ContactList.on_online(sender);
         }
         catch (e) {
             logger.error("handlePingReply error %j", e);
@@ -830,132 +830,6 @@ streembit.PeerNet = (function (module, logger, events, config) {
             }
             
             events.emit(events.TYPES.ONAPPNAVIGATE, streembit.DEFS.CMD_HANGUP_CALL, sender);
-
-        }
-        catch (e) {
-            logger.error("handleCallReply error %j", e);
-        }
-    }
-    
-    function handleShareScreenOffer(sender, payload, msgtext) {
-        try {
-            logger.debug("Share screen offer received");
-            
-            var session = list_of_sessionkeys[sender];
-            if (!session) {
-                throw new Error("handleCall error, session does not exist for " + sender);
-            }
-            
-            streembit.UI.accept_sharescreen(sender, function (result) {
-                var data = {};
-                data[wotmsg.MSGFIELD.REQJTI] = payload.jti;
-                data[wotmsg.MSGFIELD.RESULT] = result ? true : false;
-                
-                var contact = streembit.Contacts.get_contact(sender);
-                var jti = streembit.Message.create_id();
-                var encoded_msgbuffer = wotmsg.create_msg(wotmsg.PEERMSG.RSSC, jti, streembit.User.private_key, data, streembit.User.name, sender);
-                streembit.Node.peer_send(contact, encoded_msgbuffer);
-                
-                // if the call was accepted on the UI then navigate to the share screen view and wait for the WebRTC session
-                if (result) {
-                    var uioptions = {
-                        contact: contact,
-                        iscaller: false // this is the recepient of the call -> iscaller = false 
-                    };
-                    events.emit(events.TYPES.ONAPPNAVIGATE, streembit.DEFS.CMD_RECIPIENT_SHARESCREEN, null, uioptions);
-                }
-            });
-        }
-        catch (e) {
-            logger.error("handleCall error %j", e);
-        }
-    }
-    
-    function handleShareScreenReply(sender, payload, msgtext) {
-        try {
-            logger.debug("Share screen reply (RSSC) message received");
-            
-            var session = list_of_sessionkeys[sender];
-            if (!session) {
-                throw new Error("handleCallReply error, session does not exist for " + sender);
-            }
-            
-            var data = JSON.parse(msgtext);
-            //  must have the request_jti field
-            var jti = data[wotmsg.MSGFIELD.REQJTI];
-            var result = data[wotmsg.MSGFIELD.RESULT];
-            
-            //console.log("handleShareScreenReply jti:" + jti);
-            
-            // find the wait handler, remove it and return the promise
-            closeWaithandler(jti, result);
-
-        }
-        catch (e) {
-            logger.error("handleCallReply error %j", e);
-        }
-    }
-    
-    function handleCall(sender, payload, msgtext) {
-        try {
-            logger.debug("Call request received");
-            
-            var session = list_of_sessionkeys[sender];
-            if (!session) {
-                throw new Error("handleCall error, session does not exist for " + sender);
-            }
-            
-            var message = JSON.parse(msgtext);
-            var calltype = message[wotmsg.MSGFIELD.CALLT];
-            if (!calltype) {
-                throw new Error("invalid call type");
-            }
-            logger.debug("call type: " + calltype);
-            
-            streembit.UI.accept_call(sender, calltype, function (result) {
-                var data = {};
-                data[wotmsg.MSGFIELD.REQJTI] = payload.jti;
-                data[wotmsg.MSGFIELD.CALLT] = calltype;
-                data[wotmsg.MSGFIELD.RESULT] = result ? true : false;
-                
-                var contact = streembit.Contacts.get_contact(sender);
-                var jti = streembit.Message.create_id();
-                var encoded_msgbuffer = wotmsg.create_msg(wotmsg.PEERMSG.CREP, jti, streembit.User.private_key, data, streembit.User.name, sender);
-                streembit.Node.peer_send(contact, encoded_msgbuffer);
-                
-                // if the call was accepted on the UI then navigate to the video call view and wait for the WebRTC session
-                if (result) {
-                    var uioptions = {
-                        contact: contact,
-                        calltype: calltype,
-                        iscaller: false // this is the recepient of the call -> iscaller = false 
-                    };
-                    events.emit(events.TYPES.ONAPPNAVIGATE, streembit.DEFS.CMD_CONTACT_CALL, null, uioptions);
-                }
-            });
-        }
-        catch (e) {
-            logger.error("handleCall error %j", e);
-        }
-    }
-    
-    function handleCallReply(sender, payload, msgtext) {
-        try {
-            logger.debug("Call reply (CREP) message received");
-            
-            var session = list_of_sessionkeys[sender];
-            if (!session) {
-                throw new Error("handleCallReply error, session does not exist for " + sender);
-            }
-            
-            var data = JSON.parse(msgtext);
-            //  must have the request_jti field
-            var jti = data[wotmsg.MSGFIELD.REQJTI];
-            var calltype = data[wotmsg.MSGFIELD.CALLT];
-            var result = data[wotmsg.MSGFIELD.RESULT];
-            
-            // find the wait handler, remove it and return the promise
-            closeWaithandler(jti, result);
 
         }
         catch (e) {
@@ -981,7 +855,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
                 data[wotmsg.MSGFIELD.REQJTI] = payload.jti;
                 data[wotmsg.MSGFIELD.RESULT] = result ? true : false;
                 
-                var contact = streembit.Contacts.get_contact(sender);
+                var contact = streembit.ContactList.get(sender);
                 var jti = streembit.Message.create_id();
                 var encoded_msgbuffer = wotmsg.create_msg(wotmsg.PEERMSG.CREP, jti, streembit.User.private_key, data, streembit.User.name, sender);
                 streembit.Node.peer_send(contact, encoded_msgbuffer);
@@ -1020,72 +894,6 @@ streembit.PeerNet = (function (module, logger, events, config) {
         }
     }
     
-    function handleAddContactRequest(sender, payload, msgtext) {
-        try {
-            logger.debug("Add contact request message received");
-            
-            var data = JSON.parse(msgtext);
-            var contact = {
-                name: sender,
-                protocol: data[wotmsg.MSGFIELD.PROTOCOL],
-                address: data[wotmsg.MSGFIELD.HOST],
-                port: data[wotmsg.MSGFIELD.PORT],
-                public_key: data[wotmsg.MSGFIELD.PUBKEY],
-                user_type: data[wotmsg.MSGFIELD.UTYPE]
-            };
-            
-            streembit.Contacts.on_receive_addcontact(contact);
-
-            // close, don't reply here
-        }
-        catch (e) {
-            logger.error("handleAddContactRequest error %j", e);
-        }
-    }
-    
-    /*
-     * The contact replied with an accept for the add contact request
-     */
-    function handleAddContactAcceptReply(sender, payload, msgtext) {
-        try {
-            logger.debug("Add contact request message received");
-            
-            var data = JSON.parse(msgtext);
-            var account = data.sender;
-            if (sender != account) {
-                throw new Error("invalid account, the account and sender do not match");
-            }
-            
-            streembit.Contacts.handle_addcontact_accepted(account);
-
-            // close, don't reply here
-        }
-        catch (e) {
-            logger.error("handleAddContactRequest error %j", e);
-        }
-    }
-    
-    /*
-     * The contact replied with a deny (DACR) for the add contact request
-     */
-    function handleAddContactDenyReply(sender, payload, msgtext) {
-        try {
-            logger.debug("Add contact request message received");
-            
-            var data = JSON.parse(msgtext);
-            var account = data.sender;
-            if (sender != account) {
-                throw new Error("invalid account, the account and sender do not match");
-            }
-            
-            streembit.Contacts.handle_addcontact_denied(account);
-
-            // close, don't reply here
-        }
-        catch (e) {
-            logger.error("handleAddContactDenyReply error %j", e);
-        }
-    }
     
     function handleSymmMessage(sender, payload, msgtext) {
         try {
@@ -1106,40 +914,6 @@ streembit.PeerNet = (function (module, logger, events, config) {
                 return;
             
             switch (data.cmd) {
-                case streembit.DEFS.PEERMSG_TXTMSG:
-                    try {
-                        if (streembit.Session.curent_viewmodel && streembit.Session.curent_viewmodel.onTextMessage) {
-                            streembit.Session.curent_viewmodel.onTextMessage(data);
-                        }
-                        else {
-                            // signal the contact list about the message
-                            streembit.Session.contactsvm.onTextMessage(data);
-                        }
-                    }
-                    catch (e) {
-                        logger.error("Error in handling chat message %j", e);
-                    }
-                    break;
-
-                case streembit.DEFS.PEERMSG_CALL_WEBRTC:
-                    //logger.debug("WEBRTC peer message received");
-                    events.emit(events.APPEVENT, events.TYPES.ONCALLWEBRTCSIGNAL, data);
-                    break;
-
-                case streembit.DEFS.PEERMSG_CALL_WEBRTCSS:
-                    //logger.debug("WEBRTC peer message received");
-                    events.emit(events.APPEVENT, events.TYPES.ONCALLWEBRTC_SSCSIG, data);
-                    break;
-
-                case streembit.DEFS.PEERMSG_CALL_WEBRTCAA:
-                    //logger.debug("WEBRTC peer message received");
-                    events.emit(events.APPEVENT, events.TYPES.ONCALLWEBRTC_SSAUDIOSIG, data);
-                    break;
-
-                case streembit.DEFS.PEERMSG_FILE_WEBRTC:
-                    //logger.debug("WEBRTC peer message received");
-                    events.emit(events.APPEVENT, events.TYPES.ONFILEWEBRTCSIGNAL, data);
-                    break;
 
                 case streembit.DEFS.PEERMSG_FSEND:
                     //logger.debug("PEERMSG_FSEND message received");
@@ -1161,6 +935,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
                     break;
 
                 default:
+                    logger.info("handleSymmMessage NOT implemented: " + data.cmd);
                     break;
             }
         }
@@ -1171,10 +946,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
     
     module.onPeerMessage = function (data, info) {
         try {
-            if (!streembit.User.is_user_initialized) {
-                throw new Error("the application user is not yet initialized");
-            }
-            
+
             var msgarray = wotmsg.get_msg_array(data);
             if (!msgarray || !msgarray.length || msgarray.length != 3)
                 throw new Error("invalid message");
@@ -1194,7 +966,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
             
             //  get the public key for the sender only contacts are 
             //  allowed communicate with eachother via peer to peer
-            var public_key = streembit.Contacts.get_public_key(sender);
+            var public_key = streembit.ContactList.get_public_key(sender);
             if (!public_key) {
                 if (payload.sub != wotmsg.PEERMSG.ACRQ 
                     && payload.sub != wotmsg.PEERMSG.EXCH 
@@ -1244,14 +1016,6 @@ streembit.PeerNet = (function (module, logger, events, config) {
             var message = wotmsg.decode(data, public_key);
             if (!message || !message.data) {
                 throw new Error("invalid JWT message");
-            }
-            
-            if (message.sub == wotmsg.PEERMSG.EXCH || message.sub == wotmsg.PEERMSG.PING) {
-                var pending_contact = streembit.Session.get_pending_contact(sender);
-                if (pending_contact) {
-                    // remove from the pending contacts and add to the contacts list
-                    streembit.Contacts.handle_addcontact_accepted(sender);
-                }
             }
             
             switch (message.sub) {
