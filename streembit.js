@@ -223,7 +223,7 @@ appevents.on(appevents.APPEVENT, function (eventcmd, payload, info) {
         streembit.PeerNet.onPeerMessage(payload, info);
     }
     else if (eventcmd == "devdesc_request") {
-
+        streembit.device_handler.device_request(payload);
     }
 
 });

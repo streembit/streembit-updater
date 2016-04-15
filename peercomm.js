@@ -927,7 +927,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
 
                 case streembit.DEFS.PEERMSG_DEVDESC_REQ:
                     logger.debug("PEERMSG_DEVDESC_REQ message received");
-                    events.emit(events.APPEVENT, "devdesc_request", data);
+                    events.emit(events.APPEVENT, "devdesc_request", { sender: sender });
                     break;
 
                 case streembit.DEFS.PEERMSG_DEVDESC:
@@ -968,49 +968,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
             //  allowed communicate with eachother via peer to peer
             var public_key = streembit.ContactList.get_public_key(sender);
             if (!public_key) {
-                if (payload.sub != wotmsg.PEERMSG.ACRQ 
-                    && payload.sub != wotmsg.PEERMSG.EXCH 
-                    && payload.sub != wotmsg.PEERMSG.AACR 
-                    && payload.sub != wotmsg.PEERMSG.DACR 
-                    && payload.sub != wotmsg.PEERMSG.PING) {
-                    throw new Error("peer message sender '" + sender + "' is not a contact");
-                }
-                
-                if (payload.sub == wotmsg.PEERMSG.ACRQ) {
-                    //  if the message is an add contact request then continue as the contact does not exists yet
-                    //  get the public key from the payload
-                    try {
-                        var msgdata = JSON.parse(payload.data);
-                        public_key = msgdata.public_key;
-                        if (!public_key) {
-                            throw new Error("no public key exists in request");
-                        }
-                    }
-                    catch (err) {
-                        throw new Error("Add contact request error: " + err.message + ". Contact: " + sender);
-                    }
-                }
-                else if (payload.sub == wotmsg.PEERMSG.EXCH || 
-                            payload.sub == wotmsg.PEERMSG.AACR || 
-                            payload.sub == wotmsg.PEERMSG.DACR ||
-                            payload.sub == wotmsg.PEERMSG.PING) {
-                    //  It is possible that the add contact request of this account was received, but the accept reply
-                    //  was never received by the account. However, the exchange message indicates that the contact 
-                    //  accepted the add contact request.
-                    //  If there is a pending contact request then try processing the message
-                    
-                    // Try to get the public key from the pending contacts list
-                    var pending_contact = streembit.Session.get_pending_contact(sender);
-                    if (pending_contact) {
-                        if (!pending_contact.public_key) {
-                            throw new Error("pending contact exists, but there is no public key in the data");
-                        }
-                        public_key = pending_contact.public_key;
-                        if (!public_key) {
-                            throw new Error("pending contact exists, but no public key exists for it");
-                        }
-                    }
-                }
+                throw new Error("no public key exists for contact " + sender);
             }
             
             var message = wotmsg.decode(data, public_key);
@@ -1022,55 +980,38 @@ streembit.PeerNet = (function (module, logger, events, config) {
                 case wotmsg.PEERMSG.EXCH:
                     handleKeyExchange(sender, public_key, payload, message.data);
                     break;
+
                 case wotmsg.PEERMSG.ACCK:
                     handleAcceptKey(sender, payload, message.data);
                     break;
+
                 case wotmsg.PEERMSG.PING:
                     handlePing(sender, payload, message.data);
                     break;
+
                 case wotmsg.PEERMSG.PREP:
                     handlePingReply(sender, payload, message.data);
                     break;
+
                 case wotmsg.PEERMSG.SYMD:
                     handleSymmMessage(sender, payload, message.data);
                     break;
-                case wotmsg.PEERMSG.CALL:
-                    handleCall(sender, payload, message.data);
-                    break;
-                case wotmsg.PEERMSG.CREP:
-                    handleCallReply(sender, payload, message.data);
-                    break;
-                case wotmsg.PEERMSG.SSCA:
-                    handleShareScreenOffer(sender, payload, message.data);
-                    break;
-                case wotmsg.PEERMSG.RSSC:
-                    handleShareScreenReply(sender, payload, message.data);
-                    break;
+
                 case wotmsg.PEERMSG.FILE:
                     handleFileInit(sender, payload, message.data);
                     break;
+
                 case wotmsg.PEERMSG.FREP:
                     handleFileReply(sender, payload, message.data);
                     break;
-                case wotmsg.PEERMSG.HCAL:
-                    handleHangupCall(sender, payload, message.data);
-                    break;
-                case wotmsg.PEERMSG.ACRQ:
-                    handleAddContactRequest(sender, payload, message.data);
-                    break;
-                case wotmsg.PEERMSG.AACR:
-                    handleAddContactAcceptReply(sender, payload, message.data);
-                    break;
-                case wotmsg.PEERMSG.DACR:
-                    handleAddContactDenyReply(sender, payload, message.data);
-                    break;
 
                 default:
+                    logger.error("onPeerMessage error %j", err);
                     break;
             }
         }
-        catch (err) {
-            logger.error("onPeerMessage error %j", err);
+        catch (e) {
+            logger.error("onPeerMessage error %j", e);
         }
     }
     
@@ -1371,123 +1312,6 @@ streembit.PeerNet = (function (module, logger, events, config) {
                 reject(err);
             }
         });
-    }
-    
-    module.send_addcontact_request = function (contact) {
-        try {
-            var account = contact.name;
-            var data = { sender: streembit.User.name };
-            data[wotmsg.MSGFIELD.PUBKEY] = streembit.User.public_key;
-            data[wotmsg.MSGFIELD.ECDHPK] = streembit.User.ecdh_public_key;
-            data[wotmsg.MSGFIELD.PROTOCOL] = config.transport;
-            data[wotmsg.MSGFIELD.HOST] = streembit.User.address;
-            data[wotmsg.MSGFIELD.PORT] = streembit.User.port;
-            data[wotmsg.MSGFIELD.UTYPE] = streembit.DEFS.USER_TYPE_HUMAN;
-            
-            var jti = streembit.Message.create_id();
-            var encoded_msgbuffer = wotmsg.create_msg(wotmsg.PEERMSG.ACRQ, jti, streembit.User.private_key, data, streembit.User.name, account);
-            streembit.Node.peer_send(contact, encoded_msgbuffer);
-        }
-        catch (err) {
-            logger.error("send_addcontact_request error:  %j", err);
-        }
-    }
-    
-    module.send_accept_addcontact_reply = function (contact) {
-        try {
-            var account = contact.name;
-            var data = { sender: streembit.User.name };
-            
-            var jti = streembit.Message.create_id();
-            var encoded_msgbuffer = wotmsg.create_msg(wotmsg.PEERMSG.AACR, jti, streembit.User.private_key, data, streembit.User.name, account);
-            streembit.Node.peer_send(contact, encoded_msgbuffer);
-        }
-        catch (err) {
-            logger.error("send_addcontact_request error:  %j", err);
-        }
-    }
-    
-    module.send_decline_addcontact_reply = function (contact) {
-        try {
-            var account = contact.name;
-            var data = { sender: streembit.User.name };
-            
-            var jti = streembit.Message.create_id();
-            var encoded_msgbuffer = wotmsg.create_msg(wotmsg.PEERMSG.DACR, jti, streembit.User.private_key, data, streembit.User.name, account);
-            streembit.Node.peer_send(contact, encoded_msgbuffer);
-        }
-        catch (err) {
-            logger.error("send_addcontact_request error:  %j", err);
-        }
-    }
-    
-    module.hangup_call = function (contact) {
-        
-        return new Promise(function (resolve, reject) {
-            try {
-                var account = contact.name;
-                var data = {}
-                data[wotmsg.MSGFIELD.TIMES] = Date.now();
-                
-                var jti = streembit.Message.create_id();
-                var encoded_msgbuffer = wotmsg.create_msg(wotmsg.PEERMSG.HCAL, jti, streembit.User.private_key, data, streembit.User.name, account);
-                streembit.Node.peer_send(contact, encoded_msgbuffer);
-                
-                // don't wait for reply
-            }
-            catch (err) {
-                reject(err);
-            }
-        });
-    }
-    
-    module.call = function (contact, type, showprogress) {
-        
-        return new Promise(function (resolve, reject) {
-            try {
-                
-                var account = contact.name;
-                var data = {}
-                data[wotmsg.MSGFIELD.CALLT] = type;
-                
-                var jti = streembit.Message.create_id();
-                var encoded_msgbuffer = wotmsg.create_msg(wotmsg.PEERMSG.CALL, jti, streembit.User.private_key, data, streembit.User.name, account);
-                streembit.Node.peer_send(contact, encoded_msgbuffer);
-                
-                wait_peer_reply(jti, 10000, showprogress)
-                .then(
-                    function (isaccepted) {
-                        resolve(isaccepted);
-                    },
-                    function (err) {
-                        reject(err);
-                    }                    
-                );
-            }
-            catch (err) {
-                reject(err);
-            }
-        });
-    }
-    
-    module.offer_sharescreen = function (contact, resolve, reject) {
-        try {
-            var account = contact.name;
-            var data = {}
-            data[wotmsg.MSGFIELD.TIMES] = Date.now();
-            
-            var jti = streembit.Message.create_id();
-            var encoded_msgbuffer = wotmsg.create_msg(wotmsg.PEERMSG.SSCA, jti, streembit.User.private_key, data, streembit.User.name, account);
-            streembit.Node.peer_send(contact, encoded_msgbuffer);
-            
-            //console.log("offer_sharescreen jti:" + jti);
-            
-            wait_peer_reply(jti, 15000, true).then(resolve, reject);
-                          
-        }
-        catch (err) {
-            reject(err);
-        }
     }
     
     module.initfile = function (contact, file, showprogress, timeout) {

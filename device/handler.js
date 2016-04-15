@@ -25,6 +25,7 @@ Copyright (C) 2016 The Streembit software development team
 var streembit = streembit || {};
 
 streembit.config = require("../config.json");
+streembit.ContactList = require("../contactlist");
 
 streembit.DeviceHandler = (function (handler, logger, config, events) {
     
@@ -49,9 +50,32 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
                     logger.debug("device event temperature: " + value);
                 });
             }
-        }           
-    }
+        }
+    };
     
+    handler.device_request = function (payload) {
+        var sender = payload.sender;
+        logger.debug("sending device_request to " + sender);
+        
+        var devdescs = [];
+        
+        var devices = config.devices;
+        for (var i = 0; i < devices.length; i++) {
+            var device = devices[i].device;
+            var path = "./" + device;
+            var lib = require(path);
+            if (lib["get_description"]) {
+                var desc = lib["get_description"]();
+                if (desc) {
+                    devdescs.push(desc);
+                }
+            }
+        }
+        
+        var contact = streembit.ContactList.get(sender);
+        var message = { cmd: streembit.DEFS.PEERMSG_DEVDESC, devices: devdescs };
+        streembit.PeerNet.send_peer_message(contact, message);
+    }    
     
     return handler;
 
