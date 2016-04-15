@@ -73,6 +73,7 @@ streembit.PeerNet = require("./peercomm").PeerNet;
 streembit.accountsDB = require("./streembitdb").accountsdb;
 streembit.account = require("./account");
 streembit.contacts = require("./contacts");
+streembit.device_handler = require("./device/handler");
 
 var config_node = config.node;
 if (!config_node) {
@@ -91,27 +92,7 @@ streembit.localdb = 0;
 
 function devices_init() {
     try {
-        var devices = config.devices;
-        
-        if (!devices || devices.length == 0) {
-            logger.debug("No devices configured in the the config file.");
-            return;
-        }
-
-        for (var i = 0; i < devices.length; i++) {
-            var device = devices[i].device;
-            if (device == "ds18b20") {
-                var ds18b20 = require("./device/ds18b20" );
-                var options = {
-                    logger: logger,
-                    sample_interval: devices[i].sample_interval
-                };
-                var sensor = ds18b20.init_sensor(options);
-                sensor.on("temperature", function (value) {
-                    logger.debug("device event temperature: " + value);
-                });
-            }
-        }
+        streembit.device_handler.init();
     }
     catch (err) {
         logger.error("device_init error: %j", err);

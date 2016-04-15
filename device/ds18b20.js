@@ -19,11 +19,15 @@ Copyright (C) 2016 The Streembit software development team
 
 */
 
+
+'use strict';
+
+
 var util = require("util");
 var EventEmitter = require("events").EventEmitter;
 var ds18b20 = require('ds18x20');
 
-var device_definition = {
+var device_description = {
     "name": "Temperature Sensor",
     "model": {
         "@device": {
@@ -159,6 +163,10 @@ Sensor.prototype.read = function (callback) {
     catch (err) {
         callback('ds18b20 read error:' + err.message);
     }
+}
+
+Sensor.prototype.get_description = function () {
+    return device_description;
 }
 
 module.exports.init_sensor = function(options) {

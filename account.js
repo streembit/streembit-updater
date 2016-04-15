@@ -370,5 +370,4 @@ streembit.account = (function (accountobj, logger, config, events) {
 
 }(streembit.account || {}, global.applogger, streembit.config, global.appevents));
 
-
 module.exports = streembit.account;
