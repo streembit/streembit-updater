@@ -31,6 +31,8 @@ streembit.PeerNet = require("./peercomm").PeerNet;
 
 streembit.DeviceHandler = (function (handler, logger, config, events) {
     
+    var list_of_devices = {};
+
     handler.init = function () {
         var devices = config.devices;
         
@@ -51,6 +53,8 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
                 sensor.on("temperature", function (value) {
                     logger.debug("device event temperature: " + value);
                 });
+
+                list_of_devices[device] = sensor;
             }
         }
     };
@@ -64,11 +68,9 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
             
             var devices = config.devices;
             for (var i = 0; i < devices.length; i++) {
-                var device = devices[i].device;
-                var path = "./device/" + device;
-                var lib = require(path);
-                if (lib["get_description"]) {
-                    var desc = lib["get_description"]();
+                var device = list_of_devices[devices[i].device];
+                if (device) {
+                    var desc = device["get_description"]();
                     if (desc) {
                         devdescs.push(desc);
                     }
