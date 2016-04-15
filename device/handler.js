@@ -26,6 +26,7 @@ var streembit = streembit || {};
 
 streembit.config = require("../config.json");
 streembit.ContactList = require("../contactlist");
+streembit.DEFS = require("../appdefs.js");
 
 streembit.DeviceHandler = (function (handler, logger, config, events) {
     
