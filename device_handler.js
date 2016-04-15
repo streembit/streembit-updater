@@ -24,9 +24,10 @@ Copyright (C) 2016 The Streembit software development team
 
 var streembit = streembit || {};
 
-streembit.config = require("../config.json");
-streembit.ContactList = require("../contactlist");
-streembit.DEFS = require("../appdefs.js");
+streembit.config = require("./config.json");
+streembit.ContactList = require("./contactlist");
+streembit.DEFS = require("./appdefs.js");
+streembit.PeerNet = require("./peercomm").PeerNet;
 
 streembit.DeviceHandler = (function (handler, logger, config, events) {
     
@@ -41,7 +42,7 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
         for (var i = 0; i < devices.length; i++) {
             var device = devices[i].device;
             if (device == "ds18b20") {
-                var ds18b20 = require("./ds18b20");
+                var ds18b20 = require("./device/ds18b20");
                 var options = {
                     logger: logger,
                     sample_interval: devices[i].sample_interval
@@ -55,27 +56,33 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
     };
     
     handler.device_request = function (payload) {
-        var sender = payload.sender;
-        logger.debug("sending device_request to " + sender);
-        
-        var devdescs = [];
-        
-        var devices = config.devices;
-        for (var i = 0; i < devices.length; i++) {
-            var device = devices[i].device;
-            var path = "./" + device;
-            var lib = require(path);
-            if (lib["get_description"]) {
-                var desc = lib["get_description"]();
-                if (desc) {
-                    devdescs.push(desc);
+        try {
+            var sender = payload.sender;
+            logger.debug("sending device_request to " + sender);
+            
+            var devdescs = [];
+            
+            var devices = config.devices;
+            for (var i = 0; i < devices.length; i++) {
+                var device = devices[i].device;
+                var path = "./device/" + device;
+                var lib = require(path);
+                if (lib["get_description"]) {
+                    var desc = lib["get_description"]();
+                    if (desc) {
+                        devdescs.push(desc);
+                    }
                 }
             }
+            
+            var contact = streembit.ContactList.get(sender);
+            var message = { cmd: streembit.DEFS.PEERMSG_DEVDESC, devices: devdescs };
+            streembit.PeerNet.send_peer_message(contact, message);
+
         }
-        
-        var contact = streembit.ContactList.get(sender);
-        var message = { cmd: streembit.DEFS.PEERMSG_DEVDESC, devices: devdescs };
-        streembit.PeerNet.send_peer_message(contact, message);
+        catch (err) {
+            logger.error("DeviceHandler.device_request error: %j", err);
+        }
     }    
     
     return handler;

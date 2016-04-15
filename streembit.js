@@ -73,7 +73,7 @@ streembit.PeerNet = require("./peercomm").PeerNet;
 streembit.accountsDB = require("./streembitdb").accountsdb;
 streembit.account = require("./account");
 streembit.contacts = require("./contacts");
-streembit.device_handler = require("./device/handler");
+streembit.device_handler = require("./device_handler");
 
 var config_node = config.node;
 if (!config_node) {
