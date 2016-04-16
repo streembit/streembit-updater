@@ -26,6 +26,29 @@ $ sudo modprobe w1-gpio && sudo modprobe w1-therm
 
 Alternatively, create a shell script to load the driver by executing the above command when booting the device.
 
+The device description follows the recommendations of the [WoT standardization initiative](https://www.w3.org/WoT/IG/). 
+
+```json
+{
+    "@context": "http://schema.org/",
+    "metadata": { "name": "Temperature Sensor"},
+    "encodings": ["JSON"],
+    "interactions": [
+        {
+            "@type": "Property",
+            "name": "temperature",
+            "outputData": "xsd:float",
+            "writable": false
+        },
+        { 
+            "@type": "Event",
+            "outputData": "xsd:float",
+            "name": "highTemperature"
+        }
+    ]
+};
+```
+
 
 
 

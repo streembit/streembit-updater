@@ -94,6 +94,13 @@ put the "alicedevice0001" name at the node.account field.
     }
 ```
 
+Start the streembit application. You must define the private key password following the -pksecret in the command line to secure your PPKI private key. 
+If the account does not exists then it will be created. Next time, you must use the same password to initialize the account.
+
+```bash
+$ cd node streembit.js -pksecret Password123456789
+```
+
 
 
 
