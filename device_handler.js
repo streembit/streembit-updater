@@ -44,10 +44,11 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
         for (var i = 0; i < devices.length; i++) {
             var device = devices[i].device;
             if (device == "ds18b20") {
+                var device_id = devices[i].id;
                 var ds18b20 = require("./device/ds18b20");
                 var options = {
                     logger: logger,
-                    id: devices[i].id,
+                    id: device_id,
                     sample_interval: devices[i].sample_interval
                 };
                 var sensor = ds18b20.init_sensor(options);
@@ -55,7 +56,7 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
                     logger.debug("device event temperature: " + value);
                 });
                 
-                list_of_devices[device] = sensor;
+                list_of_devices[device_id] = sensor;
             }
         }
     };
@@ -100,23 +101,23 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
                 throw new Error("read_request error: invalid data parameter")
             }
             
-            if (!payload.data.device) {
-                throw new Error("read_request error: invalid device name parameter")
+            if (!payload.data.id) {
+                throw new Error("read_request error: invalid device id parameter")
             }
             
             // get the device name
-            var device_name = payload.data.device.toLowerCase();
+            var device_id = payload.data.device.toLowerCase();
             
-            logger.debug("read request from " + sender + " device: " + device_name);
+            logger.debug("read request from " + sender + " device: " + device_id);
             
-            var device = list_of_devices[device_name];
+            var device = list_of_devices[device_id];
             if (!device) {
                 throw new Error("read_request error: the device does not exists in list_of_devices");
             }
             
             device["read"](function (err, data) {
                 var contact = streembit.ContactList.get(sender);
-                var message = { cmd: streembit.DEFS.PEERMSG_DEVREAD_PROP_REPLY, payload: {  device_id: device.id, value: data }};
+                var message = { cmd: streembit.DEFS.PEERMSG_DEVREAD_PROP_REPLY, payload: {  device_id: device_id, value: data }};
                 streembit.PeerNet.send_peer_message(contact, message);
             });
                      
