@@ -114,7 +114,7 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
             
             device["read"](function (err, data) {
                 var contact = streembit.ContactList.get(sender);
-                var message = { cmd: streembit.DEFS.PEERMSG_DEVREAD_PROP_REPLY, data: data };
+                var message = { cmd: streembit.DEFS.PEERMSG_DEVREAD_PROP_REPLY, device: device_name, value: data };
                 streembit.PeerNet.send_peer_message(contact, message);
             });
                      
