@@ -61,6 +61,7 @@ function Sensor(options) {
 
     EventEmitter.call(this);
     
+    this.id = options.id;
     this.device = 0;
     this.logger = options.logger;
     this.sample_interval = options.sample_interval;

@@ -47,6 +47,7 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
                 var ds18b20 = require("./device/ds18b20");
                 var options = {
                     logger: logger,
+                    id: devices[i].id,
                     sample_interval: devices[i].sample_interval
                 };
                 var sensor = ds18b20.init_sensor(options);
@@ -72,6 +73,7 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
                 if (device) {
                     var desc = device["get_description"]();
                     if (desc) {
+                        desc.id = device.id;
                         devdescs.push(desc);
                     }
                 }
@@ -114,7 +116,7 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
             
             device["read"](function (err, data) {
                 var contact = streembit.ContactList.get(sender);
-                var message = { cmd: streembit.DEFS.PEERMSG_DEVREAD_PROP_REPLY, device: device_name, value: data };
+                var message = { cmd: streembit.DEFS.PEERMSG_DEVREAD_PROP_REPLY, payload: {  device_id: device.id, value: data }};
                 streembit.PeerNet.send_peer_message(contact, message);
             });
                      

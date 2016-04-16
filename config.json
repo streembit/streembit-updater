@@ -14,6 +14,7 @@
     "devices": [
         {
             "device": "ds18b20",
+            "id": "cb4ea824-208a-448d-9780-d748c6c96af7",
             "sample_interval": 5000
         }
     ]
