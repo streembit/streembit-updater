@@ -85,6 +85,46 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
         catch (err) {
             logger.error("DeviceHandler.device_request error: %j", err);
         }
+    }
+    
+    handler.read_request = function (payload) {
+        try {
+            var sender = payload.sender;
+            if (!sender) {
+                throw new Error("read_request error: invalid sender parameter")
+            }
+
+            logger.debug("read request from " + sender);
+            
+            if (!payload.data) {
+                throw new Error("read_request error: invalid data parameter")
+            }
+            
+            // get the device name
+            var device_name = payload.data.device;
+            if (!device_name) {
+                throw new Error("read_request error: invalid device name parameter")
+            }
+            var params = payload.data.params;
+            if (!params) {
+                throw new Error("read_request error: invalid read parameters")
+            }
+            
+            var devices = config.devices;
+            for (var i = 0; i < devices.length; i++) {
+                var device = list_of_devices[device_name];
+                if (device) {
+                    device["read"]( params, function (err, data) {
+                        var contact = streembit.ContactList.get(sender);
+                        var message = { cmd: streembit.DEFS.PEERMSG_DEVREAD_REPLY, data: data };
+                        streembit.PeerNet.send_peer_message(contact, message);
+                    });                    
+                }
+            }           
+        }
+        catch (err) {
+            logger.error("DeviceHandler.device_request error: %j", err);
+        }
     }    
     
     return handler;

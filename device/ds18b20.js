@@ -27,72 +27,26 @@ var util = require("util");
 var EventEmitter = require("events").EventEmitter;
 var ds18b20 = require('ds18x20');
 
-/*
- 
- https://github.com/w3c/wot/blob/master/TF-TD/TD%20Samples/temperatureSensor.jsonld
- 
- {
-  "@context": "http://schema.org/",
-  "metadata": {
-    "name": "TemperatureSensor",
-    "protocols" : {
-      "CoAP" : {
-        "uri" : "coap://[fe80::206:98ff:fe00:202]/TemperatureSensor",
-        "priority" : 1
-		  }
-	  },
-    "encodings": [
-      "JSON"
-    ]
-  },
-  "interactions": [
-    {
-      "@type": "Property",
-      "name": "temperature",
-      "outputData": "xsd:float",
-      "writable": false
-    }, {
-      "@type": "Property",
-      "name": "temperatureThreshold",
-      "outputData": "xsd:float",
-      "writable": true
-    }, {
-      "@type": "Event",
-      "outputData": "xsd:float",
-      "name": "temperatureChanged"
-    }, {
-      "@type": "Event",
-      "outputData": "xsd:float",
-      "name": "highTemperature"
-    },{
-      "@type": "Event",
-      "outputData": "xsd:float",
-      "name": "lowTemperature"
-    }
-  ]
-} 
- 
- 
- */
 
 var device_description = 
  {
     "@context": "http://schema.org/",
     "metadata": {
+        "device": "temperature_sensor",
         "name": "Temperature Sensor",
-        "type": "DS18B20"
+        "model": "DS18B20"
     },
     "encodings": ["JSON"],
     "interactions": [
         {
             "@type": "Property",
             "name": "temperature",
-            "outputData": "xsd:float",
+            "outputData": "xs:decimal",
             "writable": false
         },
-        { 
+        {
             "@type": "Event",
-            "outputData": "xsd:float",
+            "outputData": "xs:decimal",
             "name": "highTemperature"
         }
     ]

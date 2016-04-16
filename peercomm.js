@@ -926,12 +926,17 @@ streembit.PeerNet = (function (module, logger, events, config) {
                     break;
 
                 case streembit.DEFS.PEERMSG_DEVDESC_REQ:
-                    logger.debug("PEERMSG_DEVDESC_REQ message received");
+                    //logger.debug("PEERMSG_DEVDESC_REQ message received");
                     events.emit(events.APPEVENT, "devdesc_request", { sender: sender });
                     break;
 
                 case streembit.DEFS.PEERMSG_DEVDESC:
                     logger.debug("PEERMSG_DEVDESC message received");
+                    break;
+
+                case streembit.DEFS.PEERMSG_DEVREAD:
+                    //logger.debug("PEERMSG_DEVDESC message received");
+                    events.emit(events.APPEVENT, "devread_request", { sender: sender, data: data });
                     break;
 
                 default:
