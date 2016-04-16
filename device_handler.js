@@ -87,7 +87,7 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
         }
     }
     
-    handler.read_request = function (payload) {
+    handler.read_property = function (payload) {
         try {
             var sender = payload.sender;
             if (!sender) {
@@ -100,27 +100,21 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
                 throw new Error("read_request error: invalid data parameter")
             }
             
-            // get the device name
-            var device_name = payload.data.device;
-            if (!device_name) {
+            if (!payload.data.device) {
                 throw new Error("read_request error: invalid device name parameter")
             }
-            var params = payload.data.params;
-            if (!params) {
-                throw new Error("read_request error: invalid read parameters")
+
+            // get the device name
+            var device_name = payload.data.device.toLowerCase();     
+            var device = list_of_devices[device_name];
+            if (device) {
+                device["read"]( params, function (err, data) {
+                    var contact = streembit.ContactList.get(sender);
+                    var message = { cmd: streembit.DEFS.PEERMSG_DEVREAD_PROP_REPLY, data: data };
+                    streembit.PeerNet.send_peer_message(contact, message);
+                });                    
             }
-            
-            var devices = config.devices;
-            for (var i = 0; i < devices.length; i++) {
-                var device = list_of_devices[device_name];
-                if (device) {
-                    device["read"]( params, function (err, data) {
-                        var contact = streembit.ContactList.get(sender);
-                        var message = { cmd: streembit.DEFS.PEERMSG_DEVREAD_REPLY, data: data };
-                        streembit.PeerNet.send_peer_message(contact, message);
-                    });                    
-                }
-            }           
+                     
         }
         catch (err) {
             logger.error("DeviceHandler.device_request error: %j", err);

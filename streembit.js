@@ -225,8 +225,8 @@ appevents.on(appevents.APPEVENT, function (eventcmd, payload, info) {
     else if (eventcmd == "devdesc_request") {
         streembit.device_handler.device_request(payload);
     }
-    else if (eventcmd == "devread_request") {
-        streembit.device_handler.read_request(payload);
+    else if (eventcmd == "devread_property") {
+        streembit.device_handler.read_property(payload);
     }
 
 });
