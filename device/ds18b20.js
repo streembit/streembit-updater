@@ -78,7 +78,10 @@ var ds18b20 = require('ds18x20');
 var device_description = 
  {
     "@context": "http://schema.org/",
-    "metadata": { "name": "Temperature Sensor"},
+    "metadata": {
+        "name": "Temperature Sensor",
+        "type": "DS18B20"
+    },
     "encodings": ["JSON"],
     "interactions": [
         {
