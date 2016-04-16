@@ -32,7 +32,7 @@ streembit.PeerNet = require("./peercomm").PeerNet;
 streembit.DeviceHandler = (function (handler, logger, config, events) {
     
     var list_of_devices = {};
-
+    
     handler.init = function () {
         var devices = config.devices;
         
@@ -53,7 +53,7 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
                 sensor.on("temperature", function (value) {
                     logger.debug("device event temperature: " + value);
                 });
-
+                
                 list_of_devices[device] = sensor;
             }
         }
@@ -93,8 +93,6 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
             if (!sender) {
                 throw new Error("read_request error: invalid sender parameter")
             }
-
-            logger.debug("read request from " + sender);
             
             if (!payload.data) {
                 throw new Error("read_request error: invalid data parameter")
@@ -103,23 +101,28 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
             if (!payload.data.device) {
                 throw new Error("read_request error: invalid device name parameter")
             }
-
+            
             // get the device name
-            var device_name = payload.data.device.toLowerCase();     
+            var device_name = payload.data.device.toLowerCase();
+            
+            logger.debug("read request from " + sender + " device: " + device_name);
+            
             var device = list_of_devices[device_name];
-            if (device) {
-                device["read"]( params, function (err, data) {
-                    var contact = streembit.ContactList.get(sender);
-                    var message = { cmd: streembit.DEFS.PEERMSG_DEVREAD_PROP_REPLY, data: data };
-                    streembit.PeerNet.send_peer_message(contact, message);
-                });                    
+            if (!device) {
+                throw new Error("read_request error: the device does not exists in list_of_devices");
             }
+            
+            device["read"](function (err, data) {
+                var contact = streembit.ContactList.get(sender);
+                var message = { cmd: streembit.DEFS.PEERMSG_DEVREAD_PROP_REPLY, data: data };
+                streembit.PeerNet.send_peer_message(contact, message);
+            });
                      
         }
         catch (err) {
             logger.error("DeviceHandler.device_request error: %j", err);
         }
-    }    
+    }
     
     return handler;
 
