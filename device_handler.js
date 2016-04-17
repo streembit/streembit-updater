@@ -106,7 +106,7 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
             }
             
             // get the device name
-            var device_id = payload.data.device.toLowerCase();
+            var device_id = payload.data.id.toLowerCase();
             
             logger.debug("read request from " + sender + " device: " + device_id);
             
