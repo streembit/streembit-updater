@@ -148,8 +148,12 @@ Sensor.prototype.read_loop = function () {
     }
 }
 
-Sensor.prototype.read = function (callback) {
+Sensor.prototype.read = function (property, callback) {
     try {
+        
+        if (property != "temperature") {
+            throw new Error("invalid property name, temperature was expected")
+        }
                 
         if (!this.device) {
             var list_of_sensors = ds18b20.list();

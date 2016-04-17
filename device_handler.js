@@ -106,18 +106,23 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
             }
             
             // get the device name
-            var device_id = payload.data.id.toLowerCase();
-            
-            logger.debug("read request from " + sender + " device: " + device_id);
-            
+            var device_id = payload.data.id.toLowerCase();        
             var device = list_of_devices[device_id];
             if (!device) {
                 throw new Error("read_request error: the device does not exists in list_of_devices");
             }
             
-            device["read"](function (err, data) {
+            if (!payload.data.property) {
+                throw new Error("read_request error: invalid property parameter")
+            }
+            
+            var property = payload.data.property;
+            
+            logger.debug("read request from " + sender + ", device id: " + device_id + " property: " + property);            
+            
+            device["read"](property, function (err, data) {
                 var contact = streembit.ContactList.get(sender);
-                var message = { cmd: streembit.DEFS.PEERMSG_DEVREAD_PROP_REPLY, payload: {  device_id: device_id, value: data }};
+                var message = { cmd: streembit.DEFS.PEERMSG_DEVREAD_PROP_REPLY, payload: {  device_id: device_id, property: property, value: data }};
                 streembit.PeerNet.send_peer_message(contact, message);
             });
                      
