@@ -132,6 +132,16 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
         }
     }
     
+    handler.on_device_event = function (payload) {
+        try {
+            var message = { cmd: streembit.DEFS.PEERMSG_DEV_EVENT, payload: payload};
+            streembit.PeerNet.send_peer_message(contact, message);
+        }
+        catch (err) {
+            logger.error("on_device_event error: %j", err);
+        }
+    };
+    
     handler.devevent_subscribe_request = function (payload) {
         try {
             var sender = payload.sender;
@@ -166,7 +176,7 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
             
             logger.debug("event subscribe from " + sender + ", device id: " + device_id + " event: " + property + " data: " + data);            
             
-            device["subscribe_event"](event, data, function (err) {
+            device["subscribe_event"](event, data, handler.on_device_event, function (err) {
                 var contact = streembit.ContactList.get(sender);
                 var message = { cmd: streembit.DEFS.PEERMSG_DEVSUBSC_REPLY, payload: { device_id: device_id, event: event } };
                 streembit.PeerNet.send_peer_message(contact, message);

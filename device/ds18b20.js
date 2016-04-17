@@ -27,9 +27,6 @@ var streembit = streembit || {};
 var util = require("util");
 var EventEmitter = require("events").EventEmitter;
 var ds18b20 = require('ds18x20');
-streembit.DEFS = require("./appdefs.js");
-streembit.PeerNet = require("./peercomm").PeerNet;
-
 
 var device_description = 
  {
@@ -183,8 +180,12 @@ Sensor.prototype.read = function (property, callback) {
     }
 }
 
-Sensor.prototype.subscribe_event = function (event, data, callback) {
-    try {        
+Sensor.prototype.subscribe_event = function (event, data, handlerfn, callback) {
+    try {
+        if (!handlerfn || typeof handlerfn != "function") {
+            throw new Error("invalid handlerfn function")
+        }
+
         if (!event) {
             throw new Error("invalid event name")
         }
@@ -196,13 +197,18 @@ Sensor.prototype.subscribe_event = function (event, data, callback) {
         var self = this;
 
         var monitor_high_temperature = function (event, threshold, interval) {
-            self.read("temperature", function (err, value) {
-                if (value > threshold) {
-                    //  the temperature exceeds the threshold, raise the event
-                    var message = { cmd: streembit.DEFS.PEERMSG_DEV_EVENT, payload: { device_id: self.id, event: event, value: value } };
-                    streembit.PeerNet.send_peer_message(contact, message);
-                }
-            });
+            try {
+                self.read("temperature", function (err, value) {
+                    if (value > threshold) {
+                        //  the temperature exceeds the threshold, raise the event
+                        var payload = { device_id: self.id, event: event, value: value };
+                        handlerfn(payload);
+                    }
+                });
+            }
+            catch (err) {
+                logger.error("monitor_high_temperature error: %j", err);
+            }
         };
 
         if (event == "highTemperature") {
