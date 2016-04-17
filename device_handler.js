@@ -70,7 +70,7 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
             
             var devices = config.devices;
             for (var i = 0; i < devices.length; i++) {
-                var device = list_of_devices[devices[i].device];
+                var device = list_of_devices[devices[i].id];
                 if (device) {
                     var desc = device["get_description"]();
                     if (desc) {
