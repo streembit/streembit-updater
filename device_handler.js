@@ -118,11 +118,57 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
             
             var property = payload.data.property;
             
-            logger.debug("read request from " + sender + ", device id: " + device_id + " property: " + property);            
+            //logger.debug("read request from " + sender + ", device id: " + device_id + " property: " + property);            
             
             device["read"](property, function (err, data) {
                 var contact = streembit.ContactList.get(sender);
                 var message = { cmd: streembit.DEFS.PEERMSG_DEVREAD_PROP_REPLY, payload: {  device_id: device_id, property: property, value: data }};
+                streembit.PeerNet.send_peer_message(contact, message);
+            });
+                     
+        }
+        catch (err) {
+            logger.error("DeviceHandler.device_request error: %j", err);
+        }
+    }
+    
+    handler.devevent_subscribe_request = function (payload) {
+        try {
+            var sender = payload.sender;
+            if (!sender) {
+                throw new Error("read_request error: invalid sender parameter")
+            }
+            
+            if (!payload.data) {
+                throw new Error("read_request error: invalid data parameter")
+            }
+            
+            if (!payload.data.id) {
+                throw new Error("read_request error: invalid device id parameter")
+            }
+            
+            // get the device name
+            var device_id = payload.data.id.toLowerCase();
+            var device = list_of_devices[device_id];
+            if (!device) {
+                throw new Error("read_request error: the device does not exists in list_of_devices");
+            }
+            
+            if (!payload.data.event) {
+                throw new Error("read_request error: invalid event parameter")
+            }
+            var event = payload.data.event;
+            
+            if(!payload.data.data) {
+                throw new Error("read_request error: invalid data parameter")
+            }
+            var data = payload.data.data;
+            
+            logger.debug("event subscribe from " + sender + ", device id: " + device_id + " event: " + property + " data: " + data);            
+            
+            device["subscribe_event"](event, data, function (err) {
+                var contact = streembit.ContactList.get(sender);
+                var message = { cmd: streembit.DEFS.PEERMSG_DEVSUBSC_REPLY, payload: { device_id: device_id, event: event } };
                 streembit.PeerNet.send_peer_message(contact, message);
             });
                      

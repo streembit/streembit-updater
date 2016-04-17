@@ -939,6 +939,11 @@ streembit.PeerNet = (function (module, logger, events, config) {
                     events.emit(events.APPEVENT, "devread_property", { sender: sender, data: data });
                     break;
 
+                case streembit.DEFS.PEERMSG_DEVSUBSC:
+                    //logger.debug("PEERMSG_DEVDESC message received");
+                    events.emit(events.APPEVENT, "devevent_subscribe", { sender: sender, data: data });
+                    break;
+
                 default:
                     logger.info("handleSymmMessage NOT implemented: " + data.cmd);
                     break;
