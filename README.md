@@ -94,6 +94,21 @@ put the "myraspberrypi" name at the node.account field.
     }
 ```
 
+Define the device in the config.json file by adding an item to the "devices" array.  
+For this tutorial the "device" field must be "ds18b20". (That is the file name in the device directory).
+The id is to identify the device in the GUI-device interaction. It should be unique if there are multiple ds18b20 sensors connected to the Raspberry Pi device.    
+If the "sample_interval" is defined then the device will start a timer and send the temperature value to the GUI. The timeout is defined in milliseconds.
+
+```json
+"devices": [
+        {
+            "device": "ds18b20",
+            "id": "cb4ea824-208a-448d-9780-d748c6c96af7",
+            "sample_interval": 5000
+        }
+    ]
+```
+
 Start the streembit application. You must define the private key password following the -pksecret in the command line to secure your PPKI private key. 
 If the account does not exists then it will be created. Next time, you must use the same password to initialize the account.
 
@@ -104,6 +119,8 @@ $ cd node streembit.js -pksecret Password123456789
 Open the Streembit GUI application, connect to the Strembit public network. Click on the "Machines/Connect to Internet of Things Device" menu item and enter "myraspberrypi" to find the device.    
 Once the device is located on the network you should see the temperature sampling from the DS18B20 sensor.   
 You can send an event subscription request to the device by setting the temperature threshold. Once the temperature is higher than the threshold, then the GUI should receive a notification from the device.
+
+---------
 
 Please submit your questions/comments/suggestions at the [Streembit Forum](https://gitter.im/streembit).
 
