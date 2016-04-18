@@ -177,6 +177,10 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
             logger.debug("event subscribe from " + sender + ", device id: " + device_id + " event: " + event );            
             
             device["subscribe_event"](event, data, handler.on_device_event, function (err) {
+                if (err) {
+                    return logger.error("device_event_subscribe error: %j", err);
+                }
+
                 var contact = streembit.ContactList.get(sender);
                 var message = { cmd: streembit.DEFS.PEERMSG_DEVSUBSC_REPLY, payload: { device_id: device_id, event: event } };
                 streembit.PeerNet.send_peer_message(contact, message);
