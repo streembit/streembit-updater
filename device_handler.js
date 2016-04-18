@@ -142,7 +142,7 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
         }
     };
     
-    handler.devevent_subscribe_request = function (payload) {
+    handler.device_event_subscribe = function (payload) {
         try {
             var sender = payload.sender;
             if (!sender) {

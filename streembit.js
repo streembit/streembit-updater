@@ -229,7 +229,7 @@ appevents.on(appevents.APPEVENT, function (eventcmd, payload, info) {
         streembit.device_handler.read_property(payload);
     }
     else if (eventcmd == "devevent_subscribe") {
-        streembit.device_handler.read_property(payload);
+        streembit.device_handler.device_event_subscribe(payload);
     }
 
 });
