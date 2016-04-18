@@ -82,12 +82,12 @@ $ cd streembit-pi
 ```
 
 Change the account details of the config.json file. Your device is identified by the account name, and therefore to make accessible your device 
-you must create a unique account entity on the Streembit network. For example, if you want the device to be identifed with the "alicedevice0001" then
-put the "alicedevice0001" name at the node.account field.
+you must create a unique account entity on the Streembit network. For example, if you want the device to be identifed with the "myraspberrypi" then
+put the "myraspberrypi" name at the node.account field.
 
 ```json
 "node": {
-        "account": "alicedevice0001",
+        "account": "myraspberrypi",
         "address": "localhost",
         "port": 32321,
         "seeds": ["seed.streemio.org", "seed.streemio.net", "seed.streemio.biz", "seed.streemio.co"]
@@ -100,6 +100,13 @@ If the account does not exists then it will be created. Next time, you must use 
 ```bash
 $ cd node streembit.js -pksecret Password123456789
 ```
+
+Open the Streembit GUI application, connect to the Strembit public network. Click on the "Machines/Connect to Internet of Things Device" menu item and enter "myraspberrypi" to find the device.    
+Once the device is located on the network you should see the temperature sampling from the DS18B20 sensor.   
+You can send an event subscription request to the device by setting the temperature threshold. Once the temperature is higher than the threshold, then the GUI should receive a notification.
+
+Please submit your questions/comments/suggestions at the [Streembit Forum](https://gitter.im/streembit).
+
 
 
 
