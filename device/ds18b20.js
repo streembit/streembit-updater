@@ -180,7 +180,7 @@ Sensor.prototype.read = function (property, callback) {
     }
 }
 
-Sensor.prototype.monitor_high_temperature = function (event, threshold, interval) {
+Sensor.prototype.monitor_high_temperature = function (event, threshold, interval, handlerfn) {
     try {
         var self = this;
 
@@ -224,7 +224,7 @@ Sensor.prototype.subscribe_event = function (event, data, handlerfn, callback) {
             
             this.logger.debug("monitor_high_temperature threshold:" + data.threshold + ", interval: " + interval);
             
-            this.monitor_high_temperature(event, data.threshold, interval);
+            this.monitor_high_temperature(event, data.threshold, interval, handlerfn);
         }
         else {
             return callback("event subscription for " + event + " is not supported by the device");
