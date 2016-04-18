@@ -174,7 +174,7 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
             }
             var data = payload.data.data;
             
-            logger.debug("event subscribe from " + sender + ", device id: " + device_id + " event: " + property + " data: " + data);            
+            logger.debug("event subscribe from " + sender + ", device id: " + device_id + " event: " + event + " data: " + data);            
             
             device["subscribe_event"](event, data, handler.on_device_event, function (err) {
                 var contact = streembit.ContactList.get(sender);
@@ -184,7 +184,7 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
                      
         }
         catch (err) {
-            logger.error("DeviceHandler.device_request error: %j", err);
+            logger.error("device_event_subscribe error: %j", err);
         }
     }
     
