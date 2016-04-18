@@ -196,7 +196,7 @@ Sensor.prototype.monitor_high_temperature = function (event, threshold, interval
         interval);
     }
     catch (err) {
-        logger.error("monitor_high_temperature error: %j", err);
+        this.logger.error("monitor_high_temperature error: %j", err);
     }
 }
 
@@ -222,7 +222,7 @@ Sensor.prototype.subscribe_event = function (event, data, handlerfn, callback) {
             
             var interval = data.interval || 30000;
             
-            logger.debug("monitor_high_temperature threshold:" + data.threshold + ", interval: " + interval);
+            this.logger.debug("monitor_high_temperature threshold:" + data.threshold + ", interval: " + interval);
             
             monitor_high_temperature(event, data.threshold, interval);
         }
