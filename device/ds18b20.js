@@ -198,13 +198,16 @@ Sensor.prototype.subscribe_event = function (event, data, handlerfn, callback) {
 
         var monitor_high_temperature = function (event, threshold, interval) {
             try {
-                self.read("temperature", function (err, value) {
-                    if (value > threshold) {
-                        //  the temperature exceeds the threshold, raise the event
-                        var payload = { device_id: self.id, event: event, value: value };
-                        handlerfn(payload);
-                    }
-                });
+                setInterval(function () {
+                    self.read("temperature", function (err, value) {
+                        if (value > threshold) {
+                            //  the temperature exceeds the threshold, raise the event
+                            var payload = { device_id: self.id, event: event, value: value };
+                            handlerfn(payload);
+                        }
+                    });
+                },
+                interval);
             }
             catch (err) {
                 logger.error("monitor_high_temperature error: %j", err);
@@ -217,6 +220,8 @@ Sensor.prototype.subscribe_event = function (event, data, handlerfn, callback) {
             }
 
             var interval = data.interval || 30000;
+            
+            logger.debug("monitor_high_temperature threshold:" + data.threshold + ", interval: " + interval);
 
             monitor_high_temperature(event, data.threshold, interval);
         }

@@ -174,7 +174,7 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
             }
             var data = payload.data.data;
             
-            logger.debug("event subscribe from " + sender + ", device id: " + device_id + " event: " + event + " data: " + data);            
+            logger.debug("event subscribe from " + sender + ", device id: " + device_id + " event: " + event );            
             
             device["subscribe_event"](event, data, handler.on_device_event, function (err) {
                 var contact = streembit.ContactList.get(sender);
