@@ -224,7 +224,7 @@ Sensor.prototype.subscribe_event = function (event, data, handlerfn, callback) {
             
             this.logger.debug("monitor_high_temperature threshold:" + data.threshold + ", interval: " + interval);
             
-            monitor_high_temperature(event, data.threshold, interval);
+            this.monitor_high_temperature(event, data.threshold, interval);
         }
         else {
             return callback("event subscription for " + event + " is not supported by the device");
