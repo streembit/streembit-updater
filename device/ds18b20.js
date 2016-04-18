@@ -65,6 +65,7 @@ function Sensor(options) {
     this.device = 0;
     this.logger = options.logger;
     this.sample_interval = options.sample_interval;
+    this.event_subscriptions = {};
 
     this.init();
 }
@@ -180,16 +181,22 @@ Sensor.prototype.read = function (property, callback) {
     }
 }
 
-Sensor.prototype.monitor_high_temperature = function (event, threshold, interval, handlerfn) {
+Sensor.prototype.monitor_high_temperature = function (contact_name, event, threshold, interval, handlerfn) {
     try {
         var self = this;
+        
+        var timer = this.event_subscriptions[contact_name];
+        if (timer) {
+            clearTimeout(timer);
+            this.event_subscriptions[contact_name] = 0;
+        }
 
-        setInterval(function () {
+        this.event_subscriptions[contact_name] = setInterval(function () {
             self.read("temperature", function (err, value) {
                 if (value > threshold) {
                     //  the temperature exceeds the threshold, raise the event
                     var payload = { device_id: self.id, event: event, value: value };
-                    handlerfn(payload);
+                    handlerfn(contact_name, payload);
                 }
             });
         },
@@ -201,7 +208,7 @@ Sensor.prototype.monitor_high_temperature = function (event, threshold, interval
 }
 
 
-Sensor.prototype.subscribe_event = function (event, data, handlerfn, callback) {
+Sensor.prototype.subscribe_event = function (contact_name, event, data, handlerfn, callback) {
     try {
         if (!handlerfn || typeof handlerfn != "function") {
             throw new Error("invalid handlerfn function")
@@ -224,7 +231,7 @@ Sensor.prototype.subscribe_event = function (event, data, handlerfn, callback) {
             
             this.logger.debug("monitor_high_temperature threshold:" + data.threshold + ", interval: " + interval);
             
-            this.monitor_high_temperature(event, data.threshold, interval, handlerfn);
+            this.monitor_high_temperature(contact_name, event, data.threshold, interval, handlerfn);
         }
         else {
             return callback("event subscription for " + event + " is not supported by the device");

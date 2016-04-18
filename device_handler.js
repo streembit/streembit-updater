@@ -132,8 +132,9 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
         }
     }
     
-    handler.on_device_event = function (payload) {
+    handler.on_device_event = function (contact_name, payload) {
         try {
+            var contact = streembit.ContactList.get(contact_name);
             var message = { cmd: streembit.DEFS.PEERMSG_DEV_EVENT, payload: payload};
             streembit.PeerNet.send_peer_message(contact, message);
         }
@@ -144,8 +145,8 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
     
     handler.device_event_subscribe = function (payload) {
         try {
-            var sender = payload.sender;
-            if (!sender) {
+            var contact_name = payload.sender;
+            if (!contact_name) {
                 throw new Error("read_request error: invalid sender parameter")
             }
             
@@ -174,14 +175,14 @@ streembit.DeviceHandler = (function (handler, logger, config, events) {
             }
             var data = payload.data.data;
             
-            logger.debug("event subscribe from " + sender + ", device id: " + device_id + " event: " + event );            
+            logger.debug("event subscribe from " + contact_name + ", device id: " + device_id + " event: " + event );            
             
-            device["subscribe_event"](event, data, handler.on_device_event, function (err) {
+            device["subscribe_event"](contact_name, event, data, handler.on_device_event, function (err) {
                 if (err) {
                     return logger.error("device_event_subscribe error: %j", err);
                 }
 
-                var contact = streembit.ContactList.get(sender);
+                var contact = streembit.ContactList.get(contact_name);
                 var message = { cmd: streembit.DEFS.PEERMSG_DEVSUBSC_REPLY, payload: { device_id: device_id, event: event } };
                 streembit.PeerNet.send_peer_message(contact, message);
             });
