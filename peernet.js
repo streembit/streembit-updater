@@ -1,13 +1,13 @@
 ﻿/*
-
+ 
 This file is part of Streembit application. 
 Streembit is an open source project to create a real time communication system for humans and machines. 
 
 Streembit is a free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
 as published by the Free Software Foundation, either version 3.0 of the License, or (at your option) any later version.
 
-Streembit is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty 
-of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+Streembit is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of 
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with Streembit software.  
 If not, see http://www.gnu.org/licenses/.
@@ -19,331 +19,26 @@ Copyright (C) 2016 The Streembit software development team
 
 */
 
-/*
 'use strict';
 
 var streembit = streembit || {};
 
-var util = require('util');
 var assert = require('assert');
-var wotmsg = require("streembitlib/message/wotmsg");
-var uuid = require("uuid");
-var Map = require("collections/map");
 var secrand = require('secure-random');
 var nodecrypto = require(global.cryptolib);
-var streembitkad = require('streembitlib/streembitkad/kaddht');
-streembit.config = require("./config.json");
-streembit.DEFS = require("./appdefs.js");
+var querystring = require('querystring');
+var config = require('./config');
+var wotkad = require('streembitlib/kadlib');
+var wotmsg = require('streembitlib/message/wotmsg');
 streembit.User = require("./account");
+streembit.PeerTransport = require("./peertransport");
+streembit.DEFS = require("./appdefs.js");
 streembit.Message = require("./message");
 streembit.ContactList = require("./contactlist");
 
-streembit.PeerTransport = (function (obj, logger, events, config ) {
+streembit.TransportFactory = (function (factory, logger, events, config) {
     
-    var DEFAULT_STREEMBIT_PORT = 32320;
-    
-    obj.node = 0;
-    obj.is_publickey_uplodaed = false;
-    obj.is_connected = false;
-    
-    function onPeerMessage(message, info) {
-        try {
-            if (!message) {
-                return logger.error("Invalid message at onPeerMessage");
-            }
-            if (!message.type || message.type != "PEERMSG") {
-                return logger.error("Invalid message type at onPeerMessage");
-            }
-            if (!message.data) {
-                return logger.error("Invalid message data at onPeerMessage");
-            }
-            
-            //  raise an application event that a peer sent a message
-            events.emit(events.APPEVENT, events.TYPES.ONPEERMSG, message.data, info);
-            
-        }
-        catch (err) {
-            logger.error("onPeerMessage error %j", err);
-        }
-    }
-    
-    function msg_stored(node_id, item) {
-        if (!item || !item.key || !item.hash)
-            return;
-        
-        //logger.debug("peertransport msg_stored, item.key: " + item.key);
-        
-        var key = item.key;
-        if (item && key && item.value) {
-            if (key.indexOf("/") == -1) {
-                //  this is a contact update
-                //events.emit(events.CONTACT_ONLINE, item.key, item);
-            }
-            else {
-                var msgkey = streembit.User.name + "/message/";
-                if (key.indexOf(msgkey) > -1 && item.recipient == streembit.User.name) {
-                    //logger.debug("off-line message item: %j", item);
-                    var items = [item];
-                    events.emit(events.APPEVENT, events.TYPES.ONACCOUNTMSG, items);
-                }
-            }
-        }
-    }
-    
-    function onNodeError(err, contact, data) {
-        //logger.error("onNodeError: %j", err);     
-        events.emit(events.APPEVENT, events.TYPES.ONPEERERROR, { error: err, contact: contact, data: data });
-    }
-    
-    function onNetworkError(errcode, msg) {
-        logger.error("Network handler error code: " + errcode + ", error message: " + (msg || "NA"));
-    }
-    
-    function get_account_id() {
-        var id = uuid.v4().toString();
-        var accountId = id.replace(/-/g, '');
-        return accountId;
-    }
-    
-    obj.is_node_connected = function () {
-        return obj.is_connected;
-    }
-    
-    obj.init = function (bootdata, db, resultfn) {
-        if (obj.node && obj.is_connected == true) {
-            obj.node.close();
-            obj.is_connected = false;
-        }
-        
-        if (!bootdata || !bootdata.seeds || !bootdata.seeds.length) {
-            return resultfn("Invalid seeds");
-        }
-        
-        var is_private_network = bootdata.isprivate_network;
-        var private_network_accounts = bootdata.private_accounts;
-        
-        var accountId;
-        if (config.private_network == false) {
-            if (is_private_network && private_network_accounts && private_network_accounts.length) {
-                return resultfn("Public network is requested. The seed is a private network.");
-            }
-        }
-        else {
-            if (!is_private_network || !private_network_accounts || !private_network_accounts.length) {
-                return resultfn("Invalid private network information boot data");
-            }
-        }
-        
-        accountId = config.node.account || get_account_id();
-        logger.debug("Current peer account is " + accountId);
-        
-        var seedlist = [];
-        
-        for (var i = 0; i < bootdata.seeds.length; i++) {
-            if (!bootdata.seeds[i].port) {
-                bootdata.seeds[i].port = DEFAULT_STREEMBIT_PORT;
-            }
-            
-            if (config.private_network == true) {
-                if (!bootdata.seeds[i].account) {
-                    return resultfn("Invalid seed configuration data. The seed must have an account in a private network");
-                }
-            }
-            else {
-                if (!bootdata.seeds[i].account) {
-                    var str = "" + bootdata.seeds[i].address + ":" + bootdata.seeds[i].port;
-                    var buffer = new Buffer(str);
-                    var acc = nodecrypto.createHash('sha1').update(buffer).digest().toString('hex');
-                    bootdata.seeds[i].account = acc;
-                }
-            }
-            
-            // remove our own account id in case if it is in the list
-            if (bootdata.seeds[i].account != accountId) {
-                seedlist.push(bootdata.seeds[i]);
-                logger.debug("seed: %j", bootdata.seeds[i]);
-            }
-        }
-        
-        var options = {
-            onnodeerror: onNodeError,
-            onnetworkerror: onNetworkError,
-            log: logger,
-            port: config.node.port,
-            account: accountId,
-            seeds: seedlist, 
-            peermsgHandler: onPeerMessage,
-            storage: db,
-            is_private_network: is_private_network,
-            private_network_accounts: private_network_accounts,
-            is_gui_node: false,
-            contact_exist_lookupfn: null
-        };
-        
-        var contactsonly = false;
-        if (config.contactsonly) {
-            var list_of_contacts = [];
-            if (config.contacts && Array.isArray(config.contacts) && config.contacts.length > 0) {
-                for (var i = 0; i < config.contacts.length; i++) {
-                    if (!config.contacts[i].name) {
-                        continue;   
-                    }
-                    list_of_contacts.push(config.contacts[i].name);
-                }
-
-                if (list_of_contacts.length > 0) {
-                    options.contactonly = true;
-                    options.list_of_contacts = list_of_contacts;
-                }
-            }
-        }        
-        
-        try {
-            var peernode = streembitkad(options);
-            peernode.create(function (err) {
-                if (err) {
-                    return resultfn(err);
-                }
-                
-                logger.debug("peernode.create complete");
-                
-                obj.is_connected = true;
-                obj.node = peernode;
-                
-                var address = obj.node.Address;
-                var port = obj.node.Port;
-                if (!address || !port) {
-                    return resultfn("Invalid peer address and port");
-                }
-                
-                streembit.User.address = address;
-                streembit.User.port = port;
-                
-                obj.node.is_seedcontact_exists(function (result) {
-                    if (result) {
-                        logger.debug("seed contact exists in buckets");
-                        resultfn();
-                    }
-                    else {
-                        resultfn("communication with seeds failed");
-                    }
-                });
-            });
-            
-            // handle msgstored event
-            peernode.on('msgstored', msg_stored);
-
-            //
-            //
-        }
-        catch (e) {
-            resultfn(e);
-        }
-    }
-    
-    obj.validate_connection = function (callback) {
-        try {
-            obj.node.validate_connection(function (err) {
-                if (err) {
-                    //  it was an error
-                    //  close the node connection 
-                    if (obj.node && obj.is_connected == true) {
-                        obj.node.close();
-                        obj.is_connected = false;
-                        obj.node = null;
-                    }
-                }
-                callback(err);
-            });
-        }
-        catch (e) {
-            callback(e);
-        }
-    }
-    
-    obj.put = function (key, value, callback) {
-        //  For this public key upload message the key is the device name
-        //  false == don't store locally
-        obj.node.put(key, value, false, function (err, results) {
-            if (callback) {
-                callback(err, results);
-            }
-        });
-    }
-    
-    obj.get = function (key, callback) {
-        if (!callback || (typeof callback != "function"))
-            throw new Error("invalid callback at node get");
-        
-        //  For this public key upload message the key is the device name
-        obj.node.get(key, function (err, msg) {
-            callback(err, msg);
-        });
-    }
-    
-    obj.find = function (key, callback) {
-        if (!callback || (typeof callback != "function"))
-            throw new Error("invalid callback at node find");
-        
-        //  For this public key upload message the key is the device name
-        obj.node.find(key, function (err, msg) {
-            callback(err, msg);
-        });
-    }
-    
-    obj.get_node = function (account, callback) {
-        if (!callback || (typeof callback != "function"))
-            throw new Error("invalid callback at find_node");
-        
-        //  For this public key upload message the key is the device name
-        obj.node.getNode(account, function (err, msg) {
-            callback(err, msg);
-        });
-    }
-    
-    obj.peer_send = function (contact, data) {
-        try {
-            if (!data) {
-                throw new Error("peer_send invalid data parameter");
-            }
-            if (!contact) {
-                throw new Error("peer_send invalid contact parameter");
-            }
-            
-            var message = streembit.Message.create_peermsg(data);
-            var options = { address: contact.address, port: contact.port };
-            obj.node.peer_send(options, message);
-        }
-        catch (err) {
-            logger.error("peer_send error:  %j", err);
-        }
-    }
-    
-    obj.get_account_messages = function (account, msgkey, callback) {
-        try {
-            if (!account) {
-                throw new Error("get_account_messages invalid account parameter");
-            }
-            
-            obj.node.get_account_messages(account, msgkey, callback);
-        }
-        catch (err) {
-            logger.error("get_account_messages error:  %j", err);
-        }
-    }
-    
-    obj.delete_item = function (key, request) {
-        obj.node.delete_item(key, request);
-    }
-    
-    return obj;
-
-}(streembit.PeerTransport || {}, global.applogger, global.appevents, streembit.config));
-
-
-streembit.TransportFactory = (function (module, logger, events, config) {
-    
-    Object.defineProperty(module, "transport", {
+    Object.defineProperty(factory, "transport", {
         get: function () {
             if (!config) {
                 throw new Error("transport get error: config is empty");
@@ -368,7 +63,7 @@ streembit.TransportFactory = (function (module, logger, events, config) {
         },
     });
     
-    module.get_contact_transport = function (contact) {
+    factory.get_contact_transport = function (contact) {
         if (!config) {
             throw new Error("transport get error: config is empty");
         }
@@ -402,43 +97,63 @@ streembit.TransportFactory = (function (module, logger, events, config) {
         return transport;
     }
     
-    return module;
+    return factory;
 
-}(streembit.TransportFactory || {}, global.applogger, global.appevents, streembit.config));
+}(streembit.TransportFactory || {}, global.applogger, global.appevents, config));
 
-
-streembit.Node = (function (module, logger, events, config) {
+streembit.Node = (function (node, logger, events, config) {
     
-    module.init = function (seeds, db, callback) {
-        var transport = streembit.TransportFactory.transport;
-        transport.init(seeds, db, callback);
-    }
-    
-    module.put = function (key, value, callback) {
+    node.put = function (key, value, callback) {
         var transport = streembit.TransportFactory.transport;
         transport.put(key, value, callback);
     }
     
-    module.get = function (key, callback) {
+    node.get = function (key, callback) {
         var transport = streembit.TransportFactory.transport;
         transport.get(key, callback);
     }
     
-    module.find = function (key, callback) {
+    node.find = function (key, callback) {
         var transport = streembit.TransportFactory.transport;
         transport.find(key, callback);
     }
+     
+    node.peer_send = function (contact, data) {
+        // select a transport based on the contact's protocol
+        var transport = streembit.TransportFactory.get_contact_transport(contact);
+        transport.peer_send(contact, data);
+    }
     
-    module.find_account = function (account) {
+    node.get_account_messages = function (account, msgkey, callback) {
+        var transport = streembit.TransportFactory.transport;
+        transport.get_account_messages(account, msgkey, callback);
+    }
+    
+    node.delete_item = function (key, request) {
+        var transport = streembit.TransportFactory.transport;
+        transport.delete_item(key, request);
+    }
+    
+    node.validate_connection = function (callback) {
+        var transport = streembit.TransportFactory.transport;
+        transport.validate_connection(callback);
+    }
+    
+    node.is_node_connected = function () {
+        var transport = streembit.TransportFactory.transport;
+        return transport.is_node_connected();
+    }
+    
+    node.find_contact = function (account, public_key) {
         return new Promise(function (resolve, reject) {
             try {
                 var transport = streembit.TransportFactory.transport;
-                transport.get_node(account, function (err, contacts) {
+                transport.find_contact(account, public_key, function (err, contact) {
                     if (err) {
                         reject(err);
                     }
                     else {
-                        resolve(contacts);
+                        resolve(contact);
                     }
                 });
             }
@@ -448,47 +163,18 @@ streembit.Node = (function (module, logger, events, config) {
         });
     }
     
-    module.peer_send = function (contact, data) {
-        // select a transport based on the contact's protocol
-        var transport = streembit.TransportFactory.get_contact_transport(contact);
-        transport.peer_send(contact, data);
-    }
-    
-    module.get_account_messages = function (account, msgkey, callback) {
-        var transport = streembit.TransportFactory.transport;
-        transport.get_account_messages(account, msgkey, callback);
-    }
-    
-    module.delete_item = function (key, request) {
-        var transport = streembit.TransportFactory.transport;
-        transport.delete_item(key, request);
-    }
-    
-    module.validate_connection = function (callback) {
-        var transport = streembit.TransportFactory.transport;
-        transport.validate_connection(callback);
-    }
-    
-    module.is_node_connected = function () {
-        var transport = streembit.TransportFactory.transport;
-        return transport.is_node_connected();
-    }
-    
-    return module;
+    return node;
 
-}(streembit.Node || {}, global.applogger, global.appevents, streembit.config));
+}(streembit.Node || {}, global.applogger, global.appevents, config));
 
-
-streembit.PeerNet = (function (module, logger, events, config) {
-    
+streembit.PeerNet = (function (peerobj, logger, events) {
     var msgmap = new Map();
     var list_of_sessionkeys = {};
     var list_of_waithandlers = {};
     
-    module.find_contact = function (account, callback) {
-        streembit.Node.find(account, function (err, msg) {
+    peerobj.get_published_contact = function (account, callback) {
+        streembit.Node.get(account, function (err, msg) {
             try {
-                
                 if (err) {
                     return callback(err);
                 }
@@ -497,22 +183,22 @@ streembit.PeerNet = (function (module, logger, events, config) {
                 var payload = wotmsg.getpayload(msg);
                 if (!payload || !payload.data || !payload.data.type || payload.data.type != wotmsg.MSGTYPE.PUBPK 
                             || payload.data[wotmsg.MSGFIELD.PUBKEY] == null || payload.data[wotmsg.MSGFIELD.ECDHPK] == null) {
-                    return callback("find_contact error: invalid contact payload");
+                    return callback("get_published_contact error: invalid contact payload");
                 }
                 
                 var decoded = wotmsg.decode(msg, payload.data[wotmsg.MSGFIELD.PUBKEY]);
                 if (!decoded || !decoded.data[wotmsg.MSGFIELD.PUBKEY]) {
-                    return callback("find_contact error: invalid decoded contact payload");
+                    return callback("get_published_contact error: invalid decoded contact payload");
                 }
                 
                 var pkey = decoded.data[wotmsg.MSGFIELD.PUBKEY];
                 if (!pkey) {
-                    return callback("find_contact error: no public key was published by contact " + account);
+                    return callback("get_published_contact error: no public key was published by contact " + account);
                 }
                 
                 var ecdhpk = decoded.data[wotmsg.MSGFIELD.ECDHPK];
                 if (!ecdhpk) {
-                    return callback("find_contact error: no ecdhpk key was published by contact " + account);
+                    return callback("get_published_contact error: no ecdhpk key was published by contact " + account);
                 }
                 
                 var cipher = decoded.data[wotmsg.MSGFIELD.CIPHER];
@@ -528,7 +214,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
                     }
                     
                     if (!symmkey) {
-                        return callback("find_contact error: no symmkey field is published from contact " + account);
+                        return callback("get_published_contact error: no symmkey field is published from contact " + account);
                     }
                     
                     // decrypt the symmkey fild
@@ -536,33 +222,33 @@ streembit.PeerNet = (function (module, logger, events, config) {
                     var keydata = JSON.parse(plaintext);
                     var session_symmkey = keydata.symmetric_key;
                     if (!session_symmkey) {
-                        return callback("invalid session symmetric key for contact " + sender);
+                        return callback("get_published_contact error: invalid session symmetric key for contact " + sender);
                     }
                     
                     // decrypt the cipher with the session_symmkey
                     var plaintext = streembit.Message.aes256decrypt(session_symmkey, cipher);
                     var connection = JSON.parse(plaintext);
                     if (!connection) {
-                        return callback("find_contact error: no connection details field is published from contact " + account);
+                        return callback("get_published_contact error: no connection details field is published from contact " + account);
                     }
                     
                     if (connection.account != account) {
-                        return callback("find_contact error: account mismatch was published from contact " + account);
+                        return callback("get_published_contact error: account mismatch was published from contact " + account);
                     }
                     
                     var address = connection[wotmsg.MSGFIELD.HOST];
                     if (!address) {
-                        return callback("find_contact error: no address field is published from contact " + account);
+                        return callback("get_published_contact error: no address field is published from contact " + account);
                     }
                     
                     var port = connection[wotmsg.MSGFIELD.PORT];
                     if (!port) {
-                        return callback("find_contact error: no port field is published from contact " + account);
+                        return callback("get_published_contact error: no port field is published from contact " + account);
                     }
                     
                     var protocol = connection[wotmsg.MSGFIELD.PROTOCOL];
                     if (!protocol) {
-                        return callback("find_contact error: no protocol field is published from contact " + account);
+                        return callback("get_published_contact error: no protocol field is published from contact " + account);
                     }
                     
                     var utype = connection[wotmsg.MSGFIELD.UTYPE];
@@ -595,16 +281,15 @@ streembit.PeerNet = (function (module, logger, events, config) {
                     };
                     
                     callback(null, contact);
-                }                
-
+                }
             }
             catch (e) {
-                callback("find_contact error: " + e.message);
+                callback("get_published_contact error: " + e.message);
             }
         });
     }
-    
-    module.onPeerError = function (payload) {
+
+    peerobj.onPeerError = function (payload) {
         try {
             var err = payload.error, contact = payload.contact, data = payload.data;
             // get the jti field from the data
@@ -935,9 +620,9 @@ streembit.PeerNet = (function (module, logger, events, config) {
         }
     }
     
-    module.onPeerMessage = function (data, info) {
+    peerobj.onPeerMessage = function (data, info) {
         try {
-
+            
             var msgarray = wotmsg.get_msg_array(data);
             if (!msgarray || !msgarray.length || msgarray.length != 3)
                 throw new Error("invalid message");
@@ -1135,7 +820,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
         });
     }
     
-    module.send_offline_message = function (contact, message, msgtype, callback) {
+    peerobj.send_offline_message = function (contact, message, msgtype, callback) {
         try {
             if (!contact) {
                 throw new Error("invalid contact parameter");
@@ -1177,7 +862,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
         }
     }
     
-    module.addcontact_message = function (contact, callback) {
+    peerobj.addcontact_message = function (contact, callback) {
         try {
             if (!contact) {
                 throw new Error("invalid contact parameter");
@@ -1211,7 +896,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
         }
     }
     
-    module.declinecontact_message = function (contact, callback) {
+    peerobj.declinecontact_message = function (contact, callback) {
         try {
             if (!contact) {
                 throw new Error("invalid contact parameter");
@@ -1245,7 +930,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
         }
     }
     
-    module.send_peer_message = function (contact, message) {
+    peerobj.send_peer_message = function (contact, message) {
         try {
             //logger.debug("send_peer_message()");
             
@@ -1271,7 +956,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
         }
     }
     
-    module.ping = function (contact, showprogress, timeout) {
+    peerobj.ping = function (contact, showprogress, timeout) {
         
         return new Promise(function (resolve, reject) {
             try {
@@ -1305,7 +990,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
         });
     }
     
-    module.initfile = function (contact, file, showprogress, timeout) {
+    peerobj.initfile = function (contact, file, showprogress, timeout) {
         
         return new Promise(function (resolve, reject) {
             try {
@@ -1338,12 +1023,12 @@ streembit.PeerNet = (function (module, logger, events, config) {
         });
     }
     
-    module.is_peer_session = function (account) {
+    peerobj.is_peer_session = function (account) {
         var val = list_of_sessionkeys[account];
         return val ? true : false;
     }
     
-    module.get_account_messages = function (msgkey) {
+    peerobj.get_account_messages = function (msgkey) {
         try {
             logger.debug("get_account_messages");
             
@@ -1360,7 +1045,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
         }
     }
     
-    module.delete_item = function (key, request) {
+    peerobj.delete_item = function (key, request) {
         try {
             streembit.Node.delete_item(key, request);
         }
@@ -1369,7 +1054,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
         }
     }
     
-    module.delete_message = function (msgid, callback) {
+    peerobj.delete_message = function (msgid, callback) {
         try {
             if (!msgid) {
                 return callback("delete_message error: invalid msgid")
@@ -1393,7 +1078,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
         }
     }
     
-    module.delete_public_key = function (callback) {
+    peerobj.delete_public_key = function (callback) {
         try {
             //  publishing user data
             if (!streembit.User.public_key || !streembit.User.ecdh_public_key || !streembit.User.address || !streembit.User.port) {
@@ -1428,7 +1113,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
         }
     }
     
-    module.update_public_key = function (new_public_key, callback) {
+    peerobj.update_public_key = function (new_public_key, callback) {
         try {
             //  publishing user data
             if (!streembit.User.public_key || !streembit.User.ecdh_public_key || !streembit.User.address || !streembit.User.port) {
@@ -1473,7 +1158,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
         }
     }
     
-    module.publish_account = function (callback) {
+    peerobj.publish_account = function (callback) {
         try {
             if (!callback) {
                 return logger.error("publish_user error: invalid callback parameter")
@@ -1515,50 +1200,27 @@ streembit.PeerNet = (function (module, logger, events, config) {
             var symmkey_array = [];
             for (var i = 0; i < contactlist.length; i++) {
                 var ecdh_public = contactlist[i].ecdh_public;
-                var symmkey_cipher = wotmsg.ecdh_encypt(streembit.User.ecdh_key, ecdh_public, plaindata);
-                var arritem = { account: contactlist[i].name, symmkey: symmkey_cipher };
-                symmkey_array.push(arritem);
+                if (ecdh_public) {
+                    var symmkey_cipher = wotmsg.ecdh_encypt(streembit.User.ecdh_key, ecdh_public, plaindata);
+                    var arritem = { account: contactlist[i].name, symmkey: symmkey_cipher };
+                    symmkey_array.push(arritem);
+                }
             }
             
-            payload["contactskeys"] = symmkey_array;   
+            payload["contactskeys"] = symmkey_array;
             
             // encrypt the data with the symmetric key
             var cipher = streembit.Message.aes256encrypt(session_symmkey, JSON.stringify(connection_data));
             payload[wotmsg.MSGFIELD.CIPHER] = cipher;
-
+            
             var value = wotmsg.create(streembit.User.private_key, streembit.Message.create_id(), payload);
             var key = streembit.User.name;
-
-            // create hash
-            // var key = nodecrypto.createHash('sha1').update(streembit.User.name).digest('hex'); //;  
 
             //  For this public key upload message the key is the device name
             streembit.Node.put(key, value, function (err, results) {
                 if (err) {
                     return callback("Publish user error: " + (err.message ? err.message : err));
-                }
-                
-                if (results && results.length) {
-                    var success = false;
-                    for (var i = 0; i < results.length; i++) {
-                        var contact_account = (results[i].contact && results[i].contact.account) ? results[i].contact.account : "unknown";
-                        var contact_address = (results[i].contact && results[i].contact.address) ? results[i].contact.address : "unknown";
-                        var contact_port = (results[i].contact && results[i].contact.port) ? results[i].contact.port : "unknown";
-                        if (results[i].status != 0) {
-                            var error = (results[i].error && results[i].error.message)  ? results[i].error.message : "unknown error";
-                            logger.info("Error in publishing account public key at contact account: " + contact_account + ", address: " + contact_address + ", port: " + contact_port + ". Error: " + error);
-                        }
-                        else {
-                            //  at least one node has succeeded so the operation completed
-                            logger.debug("Published account public key at contact account:" + contact_account + ", address: " + contact_address + ", port: " + contact_port + " completed");
-                            success = true;
-                        }
-                    }
-                    
-                    if (!success) {
-                        return callback("Publish account error: the account info was not published to any seeds.");
-                    }
-                }
+                }                
                 
                 logger.debug("peer published");
                 
@@ -1572,7 +1234,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
         }
     }
     
-    module.session = function (account) {
+    peerobj.session = function (account) {
         var session = list_of_sessionkeys[account];
         if (session && session.accepted && session.symmetric_key) {
             //  the session is already exists
@@ -1583,7 +1245,7 @@ streembit.PeerNet = (function (module, logger, events, config) {
         }
     }
     
-    module.get_contact_session = function (contact, showprog) {
+    peerobj.get_contact_session = function (contact, showprog) {
         
         return new Promise(function (resolve, reject) {
             try {
@@ -1616,41 +1278,9 @@ streembit.PeerNet = (function (module, logger, events, config) {
         });
     }
     
-    module.validate_connection = function () {
-        return new Promise(function (resolve, reject) {
-            streembit.Node.validate_connection(function (err) {
-                if (err) {
-                    reject(err);
-                }
-                else {
-                    resolve();
-                }
-            });
-        });
-    }
+    return peerobj;
     
-    module.init = function (seeds, db) {
-        return new Promise(function (resolve, reject) {
-            streembit.Node.init(seeds, db, function (err, result) {
-                if (err) {
-                    reject(err);
-                }
-                else {
-                    resolve();
-                }
-            });
-        });
-    }
-    
-    
-    return module;
+}(streembit.PeerNet || {}, global.applogger, global.appevents));
 
-}(streembit.PeerNet || {}, global.applogger, global.appevents, streembit.config));
-
-//  exports
-module.exports.PeerNet = streembit.PeerNet;
-module.exports.Message = streembit.Message;
+module.exports = streembit.PeerNet;
 module.exports.Node = streembit.Node;
-
-*/
-
