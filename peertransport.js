@@ -33,6 +33,7 @@ var net = require("net");
 var config = require('./config');
 streembit.account = require("./account");
 streembit.DEFS = require("./appdefs.js");
+streembit.Message = require("./message");
 
 streembit.PeerTransport = ( function (peerobj, logger, events, config) {
 
