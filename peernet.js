@@ -1204,6 +1204,7 @@ streembit.PeerNet = (function (peerobj, logger, events) {
                     var symmkey_cipher = wotmsg.ecdh_encypt(streembit.User.ecdh_key, ecdh_public, plaindata);
                     var arritem = { account: contactlist[i].name, symmkey: symmkey_cipher };
                     symmkey_array.push(arritem);
+                    logger.debug("connection data to: " + contactlist[i].name + " is " + symmkey_cipher);
                 }
             }
             

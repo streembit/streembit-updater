@@ -279,8 +279,12 @@ streembit.PeerTransport = ( function (peerobj, logger, events, config) {
         try {
             logger.debug('findRangeMessages for %s', query);
             
+            if (!peerobj.db) {
+                throw new Error("invalid database object");    
+            }
+            
             var self = peerobj;
-            var stream = db.createReadStream();
+            var stream = peerobj.db.createReadStream();
             
             var key, count = 0, page = 10, start = 0;
             var messages = [];
