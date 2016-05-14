@@ -186,7 +186,7 @@ async.waterfall(
 appevents.on(appevents.APPEVENT, function (eventcmd, payload, info) {
     
     if (eventcmd == appevents.TYPES.ONPEERMSG) {
-        streembit.PeerNet.onPeerMessage(payload, info);
+        streembit.peernet.onPeerMessage(payload, info);
     }
     else if (eventcmd == "devdesc_request") {
         streembit.device_handler.device_request(payload);
