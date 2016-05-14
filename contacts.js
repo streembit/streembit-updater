@@ -142,6 +142,8 @@ streembit.Contacts = (function (contactsobj, logger, events, config) {
                     return callback();
                 }
                 
+                contacts.update(contact_name, contact);
+                
                 try {
                     streembit.Node.find_contact(contact_name, public_key)
                     .then(
@@ -168,9 +170,19 @@ streembit.Contacts = (function (contactsobj, logger, events, config) {
                                     return;
                                 }
                                 
-                                contacts.update(contact_node.name, contact_node);
-                                
-                                logger.debug("contact " + contact_node.name + " populated from network and updated. address: " + contact_node.address + ". port: " + contact_node.port + ". protocol: " + contact_node.protocol);
+                                if (contact_node && 
+                                    contact_node.name == contact_name && 
+                                    contact_node.address && 
+                                    contact_node.port && 
+                                    contact_node.protocol) {
+                                    if (contact_node.address != contact.address || contact_node.port != contact.port || contact_node.protocol != contact.protocol) {
+                                        contact.address = contact_node.address;
+                                        contact.port = contact_node.port;
+                                        contact.protocol = contact_node.protocol;
+                                        contacts.update(contact_name, contact);                                        
+                                        logger.debug("contact " + contact_node.name + " populated from network and updated. address: " + contact_node.address + ". port: " + contact_node.port + ". protocol: " + contact_node.protocol);                                
+                                    }
+                                }                                
                                 
                                 setTimeout(function () {
                                     callback();

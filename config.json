@@ -1,8 +1,8 @@
 ﻿{
     "node": {
-        "account": "",
+        "account": "pitest0002",
         "address": "",
-        "port": 32320,
+        "port": 32322,
         "seeds": [
             { "address": "seed.streemio.org", "port": 32320, "public_key": "033b726f5ff2fc02a009ab2ef0844b807372af4b13d1236c2df9752de1ee93f5fa" },
             { "address": "seed.streemio.net", "port": 32320, "public_key": "033d92278f9440c8b4061dddf862f5e224d0ff312e642edfa2c93c86671442609f" },
@@ -16,9 +16,22 @@
     "transport":  "tcp",
     "private_network": false,
     "private_network_accounts": [ ],
-    "devices": [ ],
+    "devices": [
+        {
+            "device": "ds18b20",
+			"id": "cb4ea824-208a-448d-9780-d748c6c96af7",
+            "sample_interval": 0
+        }
+    ],
     "contactsonly": true,
     "contacts": [
+        {
+            "name": "pitest0001",
+            "public_key": "02435bc4a2e7f105d2c83ab1d76e3ff8659b40e46bd962e6f76ab37eb8bf1ca22a"
+        },
+		{
+            "name": "tzpardi",
+            "public_key": "03e9a353b86cc482af497a8afb56209ee35eaa80bee228c2af8ce48747b90c50e7"
+        }
     ]
-
 }

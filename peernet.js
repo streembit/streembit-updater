@@ -203,7 +203,7 @@ streembit.PeerNet = (function (peerobj, logger, events) {
                 
                 var cipher = decoded.data[wotmsg.MSGFIELD.CIPHER];
                 var contactskeys = decoded.data["contactskeys"];
-                if (cipher && contactskeys && Array.isArray(contactskeys)) {
+                if (cipher && contactskeys && Array.isArray(contactskeys) && contactskeys.length) {
                     
                     var symmkey = null;
                     for (var i = 0; i < contactskeys.length; i++) {
@@ -1204,7 +1204,7 @@ streembit.PeerNet = (function (peerobj, logger, events) {
                     var symmkey_cipher = wotmsg.ecdh_encypt(streembit.User.ecdh_key, ecdh_public, plaindata);
                     var arritem = { account: contactlist[i].name, symmkey: symmkey_cipher };
                     symmkey_array.push(arritem);
-                    logger.debug("connection data to: " + contactlist[i].name + " is " + symmkey_cipher);
+                    logger.debug("connection cipher set for " + contactlist[i].name );
                 }
             }
             
