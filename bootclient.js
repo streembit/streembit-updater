@@ -21,254 +21,165 @@ Copyright (C) 2016 The Streembit software development team
 
 'use strict';
 
-
 var streembit = streembit || {};
 
-var async = require("async");
-streembit.config = require("./config.json");
-streembit.DEFS = require("./appdefs.js");
+var net = require('net');
+var dns = require('dns');
+var async = require('async');
 
-streembit.bootclient = (function (module, logger, config, events) {
+streembit.bootclient = (function (client, logger) {
     
-    module.result = [];
-    
-    function randomIntFromInterval(min, max) {
-        return Math.floor(Math.random() * (max - min + 1) + min);
+    function is_ipaddress(address) {
+        var ipPattern = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/; // /^(\d{ 1, 3 })\.(\d { 1, 3 })\.(\d { 1, 3 })\.(\d { 1, 3 })$/;   
+        var valid = ipPattern.test(address);
+        return valid;
     }
     
-    function shuffleItem(array) {
-        var len = array.length;
-        var index = randomIntFromInterval(0, len - 1);
-        var removed = array.splice(index, 1);
-        return {
-            result: removed[0],
-            remaining: array
+    function get_seed_ipaddress(address, callback) {
+        if (!address) {
+            return callback("get_seed_ipaddress error: invalid address");
         }
+        
+        var isip = is_ipaddress(address);
+        if (isip) {
+            return callback(null, address);
+        }       
+        
+        dns.resolve4(address, function (err, addresses) {
+            if (err) {
+                return callback(err);
+            }
+            
+            if (!addresses || !addresses.length) {
+                return callback("dns resolve failed to get addresses");
+            }
+            
+            callback(null, addresses[0]);
+        });
     }
     
-    function get_seeds(remoteuri, port, callback) {
-        try {
-
-            const http = require('http');
-            
-            var options = {
-                host: remoteuri,
-                port: port || streembit.DEFS.BOOT_PORT,
-                path: '/seeds',
-                method: 'POST'
-            };
-            
-            var request = http.request(options, function (response) {
-                var body = '';
-                response.on("data", function (chunk) {
-                    body += chunk.toString('utf8');
-                });
+    client.resolveseeds = function (seeds, callback) {
+        if (!seeds || !Array.isArray(seeds) || seeds.length == 0) {
+            return callback(null, seeds);
+        }        
+        
+        async.map(
+            seeds,
+            function (seed, done) {
+                var result = {};
+                try {
+                    // get the IP address
+                    get_seed_ipaddress(seed.address, function (err, address) {
+                        if (err) {
+                            result.error = err;
+                            return done(null, result);
+                        }
+                        
+                        result.address = address;
+                        result.port = seed.port;
+                        result.public_key = seed.public_key;
+                        done(null, result);                
+                    });
+                }
+                catch (e) {
+                    result.error = e;
+                    done(null, result);
+                }
+            },
+            function (err, results) {
+                if (err || results.length == 0) {
+                    return callback("Failed to resolve any seed address");
+                }
                 
-                response.on("end", function () {
-                    try {
-                        var data = JSON.parse(body);
-                        if (!data || !data.result || !data.result.seeds || !data.result.seeds.length) {
-                            callback("get_seeds() error: invalid result");
-                        }
-                        else {
-                            callback(null, data.result);
-                        }
+                var seedlist = [];
+                results.forEach(function (item, index, array) {
+                    if (item.address && !item.error) {
+                        seedlist.push({address: item.address, port: item.port, public_key: item.public_key});
                     }
-                    catch (err) {
-                        callback("get_seeds response-end parse error: " + err.message);
-                    }    
                 });
-            });
-            
-            request.on('error', function (e) {
-                callback("get_seeds() error: " + e.message);
-            });
-            
-            request.end();
 
-        }
-        catch (e) {
-            callback("get http client error: " + e.message);
-        }
+                callback(null, seedlist);
+            }
+        );
     };
-    
-    function normalize_seeds(list) {
+
+    client.discovery = function (address, seeds, callback) {     
+        if (is_ipaddress(address)) {
+            return callback(null, address);
+        }
         
-        var seeds = [];
+        if (!seeds || !Array.isArray(seeds) || seeds.length == 0) {
+            return callback("invalid seeds parameters at address discovery");
+        }
         
-        if (list || list.length > 0) {
-            for (var i = 0; i < list.length; i++) {
-                if (list[i].account == config.node.account) {
-                    continue;
-                }
-                
-                var exists = false;
-                for (var j = 0; j < seeds.length; j++) {
-                    if (seeds[j].account == list[i].account) {
-                        exists = true;
-                        break;
-                    }
-                }
-                
-                if (!exists) {
-                    seeds.push(list[i]);
-                }
+        var result_ipaddress = 0;
+        
+        function discover_address(seed, asyncfn) {
+            if (result_ipaddress) {
+                return asyncfn(null, true);   
             }
-        }
-        
-        return seeds;
-    }
-    
-    module.tcp_boot = function (seedsarr, callback) {
-        logger.debug("bootclient tcp_boot()");
-        var discovery_srvs = [];
-        var bootseeds = [];
-        
-        if (!seedsarr || seedsarr.length == 0) {
-            return callback("bootseeds configuration is missing");
-        }
-        
-        for (var i = 0; i < seedsarr.length; i++) {
-            bootseeds.push(seedsarr[i]);
-        }
-        
-        do {
-            
-            if (bootseeds.length <= 1) {
-                if (bootseeds.length == 1) {
-                    discovery_srvs.push(
-                        {
-                            host: bootseeds[0].host ? bootseeds[0].host : bootseeds[0], 
-                            port: bootseeds[0].port ? bootseeds[0].port : streembit.DEFS.BOOT_PORT
-                        });
-                }
-                break;
-            }
-            
-            var shuffle = shuffleItem(bootseeds);
-            discovery_srvs.push(
+
+            var tcpclient = net.connect( 
                 {
-                    host: shuffle.result.host ? shuffle.result.host : shuffle.result, 
-                    port: shuffle.result.port ? shuffle.result.port : streembit.DEFS.BOOT_PORT
+                    port: seed.port, 
+                    host: seed.address
+                },
+                function () {
+                    tcpclient.write(JSON.stringify({ type: 'DISCOVERY' }));
                 }
             );
             
-        } while (bootseeds.length > 0);
-        
-        if (discovery_srvs.length == 0) {
-            return callback("invalid boot discovery services array");
-        }
-        
-        var index = 0;
-        var bootresult = 0;
-        
-        async.whilst(
-            function () {
-                var incomplete = !bootresult && !bootresult.seeds && index < discovery_srvs.length;
-                return incomplete;
-            },
-            function (asyncfn) {
-                var host = discovery_srvs[index].host;
-                var port = discovery_srvs[index].port;
-                index++;
-                logger.debug("get_seeds domain: " + host + ":" + port);
-                get_seeds(host, port, function (err, result) {
-                    if (err) {
-                        logger.debug("get_seeds error: %j", err);
-                        asyncfn(null, []);
+            tcpclient.on('data', function (data) {
+                tcpclient.end();
+                var reply = JSON.parse(data.toString());
+                if (reply && reply.address) {
+                    var ipv6prefix = "::ffff:";
+                    if (reply.address.indexOf(ipv6prefix) > -1) {
+                        reply.address = reply.address.replace(ipv6prefix, '');
+                    }
+                    
+                    if (is_ipaddress(reply.address)) {
+                        result_ipaddress = reply.address;
+                        asyncfn(null, true);
                     }
                     else {
-                        bootresult = result;
-                        asyncfn(null, bootresult);
+                        asyncfn(null, false);
                     }
-                });
-            },
-            function (err, result) {
-                // normalize the seed list by removing the duplicates
-                if (bootresult && bootresult.seeds && bootresult.seeds.length > 0) {
-                    var seeds = normalize_seeds(bootresult.seeds);
-                    bootresult.seeds = seeds;
-                    callback(null, bootresult);
                 }
                 else {
-                    callback("Error in populating the seed list. Please make sure the bootseeds configuration is correct and a firewall doesn't block the Streembit software!");
+                    logger.error("address discovery failed at " + seed.address + ":" + seed.port);
+                    asyncfn(null, false);
+                }
+            });
+            
+            tcpclient.on('end', function () {
+            });
+            
+            tcpclient.on('error', function (err) {
+                logger.error("address discovery failed at " + seed.address + ":" + seed.port + ". " + (err.message ? err.message : err));
+                asyncfn(null, false);
+            });
+        }        
+        
+        
+        async.detectSeries(
+            seeds, 
+            discover_address, 
+            function (err, result) {
+                if (result_ipaddress) {
+                    callback(null, result_ipaddress);
+                }
+                else {
+                    return callback("IP address discovery failed");
                 }
             }
         );
-        
-    }
-    
-    module.ws_boot = function (bootseeds, callback) {
-        try {
-            logger.debug("bootclient ws_boot()");
-            
-            if (!bootseeds || bootseeds.length == 0) {
-                return callback("bootseeds configuration is missing");
-            }
-            
-            var discovery_srvs = [];
-            
-            do {
-                
-                if (bootseeds.length <= 1) {
-                    if (bootseeds.length == 1) {
-                        discovery_srvs.push(
-                            {
-                                host: bootseeds[0].host ? bootseeds[0].host : bootseeds[0], 
-                                port: bootseeds[0].port ? bootseeds[0].port : streembit.DEFS.WS_PORT
-                            });
-                    }
-                    break;
-                }
-                
-                var shuffle = shuffleItem(bootseeds);
-                
-                discovery_srvs.push(
-                    {
-                        host: shuffle.result.host ? shuffle.result.host : shuffle.result, 
-                        port: shuffle.result.port ? shuffle.result.port : streembit.DEFS.WS_PORT
-                    }
-                );
-            
-            } while (bootseeds.length > 0);        
-            
-            if (discovery_srvs.length == 0) {
-                return callback("invalid boot discovery services array");
-            }
-            
-            var result = { seeds: discovery_srvs };
-            callback(null, result);
-        }
-        catch (e) {
-            callback("ws_boot error: " + e.message);
-        }
-    }
-    
-    module.boot = function (bootseed, callback) {
-        if (!config.transport) {
-            return callback("transport configuration is missing");
-        }
-        
-        var transport;
-        switch (config.transport) {
-            case streembit.DEFS.TRANSPORT_TCP:
-                transport = config.transport;
-                break;
-            case streembit.DEFS.TRANSPORT_WS:
-                return callback("Not implemented transport type: " + config.transport);
-                //transport = config.transport;
-                break;
-            default:
-                return callback("Not implemented transport type: " + config.transport);
-        }
-        
-        transport += "_boot";
-        module[transport](bootseed, callback);
-    }
-    
-    return module;
 
-}(streembit.bootclient || {}, global.applogger, streembit.config, global.appevents));
+    };
+    
+    return client;
+
+}(streembit.bootclient || {}, global.applogger));
 
 
 module.exports = streembit.bootclient;

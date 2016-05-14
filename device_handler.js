@@ -27,7 +27,7 @@ var streembit = streembit || {};
 streembit.config = require("./config.json");
 streembit.ContactList = require("./contactlist");
 streembit.DEFS = require("./appdefs.js");
-streembit.PeerNet = require("./peercomm").PeerNet;
+streembit.PeerNet = require("./peernet");
 
 streembit.DeviceHandler = (function (handler, logger, config, events) {
     

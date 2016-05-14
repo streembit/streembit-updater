@@ -27,8 +27,8 @@ var streembit = streembit || {};
 
 var async = require('async');
 streembit.config = require("./config.json");
-streembit.PeerNet = require("./peercomm").PeerNet;
-streembit.Node = require("./peercomm").Node;
+streembit.PeerNet = require("./peernet");
+streembit.Node = require("./peernet").Node;
 streembit.ContactList = require("./contactlist");
 
 streembit.Contacts = (function (contactsobj, logger, events, config) {
@@ -128,73 +128,72 @@ streembit.Contacts = (function (contactsobj, logger, events, config) {
     function init_contact(param_contact, callback) {
         try {
             var contact_name = param_contact.name;
-            logger.debug("initialzing, find contact " + contact_name);
+            var public_key = param_contact.public_key;
+            logger.debug("initialzing, find contact " + contact_name + " public key: " + public_key);
             
-            streembit.Node.find_account(contact_name)
-            .then(
-                function (rescontacts) {
-                    try {
-                        var contact_address = null;
-                        var contact_port = null;
-                        var contact_protocol = null;
-                        if (rescontacts && rescontacts.length > 0) {
-                            for (var i = 0; i < rescontacts.length; i++) {
-                                if (contact_name != rescontacts[i].account) {
-                                    continue;
-                                }
-                                
-                                contact_address = rescontacts[i].address;
-                                contact_port = rescontacts[i].port;
-                                contact_protocol = rescontacts[i].protocol;
-                                break;
-                            }
-                        }
-                        
-                        find_contact_onnetwork(contact_address, contact_port, contact_protocol, contact_name, function (contact) {
+            streembit.PeerNet.get_published_contact(contact_name, function (err, contact) {
+                if (err) {
+                    logger.error("get_published_contact error: %j", err);
+                    return callback();
+                }
+                
+                if (!contact || contact_name != contact.name) {
+                    logger.error("Couldn't find contact " + account + " on the network");
+                    return callback();
+                }
+                
+                try {
+                    streembit.Node.find_contact(contact_name, public_key)
+                    .then(
+                        function (contact_node) {
                             try {
-                                if (!contact) {
+                                if (!contact_node) {
                                     setTimeout(function () {
                                         callback();
-                                    }, 3000);
+                                    }, 1000);
                                     return;
                                 }
                                 
                                 // validate the public key
-                                var pk = contacts.get_public_key(contact.name);
-                                if (pk != contact.public_key) {
-                                    logger.error("public key mismatch for " + contact.name);
+                                var pk = contacts.get_public_key(contact_node.name);
+                                if (pk != contact_node.public_key) {
+                                    logger.error("find_contact public key mismatch for " + contact_node.name);
                                     
                                     // remove the contact
-                                    contacts.delete(contact.name);
-
+                                    contacts.delete(contact_node.name);
+                                    
                                     setTimeout(function () {
                                         callback();
                                     }, 3000);
                                     return;
                                 }
                                 
-                                contacts.update(contact.name, contact);
+                                contacts.update(contact_node.name, contact_node);
                                 
-                                logger.debug("contact " + contact.name + " populated from network and updated. address: " + contact.address + ". port: " + contact.port + ". protocol: " + contact.protocol);
+                                logger.debug("contact " + contact_node.name + " populated from network and updated. address: " + contact_node.address + ". port: " + contact_node.port + ". protocol: " + contact_node.protocol);
                                 
                                 setTimeout(function () {
                                     callback();
-                                }, 3000);
+                                }, 1000);
                             }
                             catch (err) {
-                                logger.error("find_contact_onnetwork error: %j", err);
-                            }    
-                        });
-                    }
-                    catch (err) {
-                        logger.error("init_contact error: %j", err);
-                    }                            
-                },
-                function (err) {
-                    // use the stored contact info
-                    logger.error("find_account error: %j", err);
+                                logger.error("find_contact error: %j", err);
+                                callback();
+                            }
+                        
+                        },
+                        function (err) {
+                            logger.error("find_contact error: %j", err);
+                            callback();
+                        }
+                    );
                 }
-            )
+                catch (err) {
+                    logger.error("find_contact error: %j", err);
+                    callback();
+                }
+                
+            });
         }
         catch (err) {
             logger.error("Error in initializing contacts: %j", err);

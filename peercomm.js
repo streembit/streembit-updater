@@ -19,7 +19,7 @@ Copyright (C) 2016 The Streembit software development team
 
 */
 
-
+/*
 'use strict';
 
 var streembit = streembit || {};
@@ -819,24 +819,6 @@ streembit.PeerNet = (function (module, logger, events, config) {
         }
     }
     
-    //
-    function handleHangupCall(sender, payload, msgtext) {
-        try {
-            logger.debug("Hangup call (HCAL) message received");
-            
-            var session = list_of_sessionkeys[sender];
-            if (!session) {
-                throw new Error("handleHangupCall error, session does not exist for " + sender);
-            }
-            
-            events.emit(events.TYPES.ONAPPNAVIGATE, streembit.DEFS.CMD_HANGUP_CALL, sender);
-
-        }
-        catch (e) {
-            logger.error("handleCallReply error %j", e);
-        }
-    }
-    
     function handleFileInit(sender, payload, data) {
         try {
             logger.debug("File init request received");
@@ -893,7 +875,6 @@ streembit.PeerNet = (function (module, logger, events, config) {
             logger.error("handleCallReply error %j", e);
         }
     }
-    
     
     function handleSymmMessage(sender, payload, msgtext) {
         try {
@@ -1670,4 +1651,6 @@ streembit.PeerNet = (function (module, logger, events, config) {
 module.exports.PeerNet = streembit.PeerNet;
 module.exports.Message = streembit.Message;
 module.exports.Node = streembit.Node;
+
+*/
 

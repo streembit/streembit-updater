@@ -42,9 +42,6 @@ if (!pksecret) {
 
 console.log("pksecret: %s", pksecret);
 
-
-var DEFAULT_STREEMBIT_PORT = 32321;
-
 var config = require("./config.json");
 
 // use the nodejs crypto library
@@ -66,25 +63,19 @@ var levelup = require('levelup');
 var async = require('async');
 var util = require('util');
 var assert = require('assert');
-var wotkad = require('streembitlib/streembitkad/kaddht');
 var streembut_utils = require("./utilities");
 streembit.bootclient = require("./bootclient");
-streembit.PeerNet = require("./peercomm").PeerNet;
 streembit.accountsDB = require("./streembitdb").accountsdb;
 streembit.account = require("./account");
 streembit.contacts = require("./contacts");
 streembit.device_handler = require("./device_handler");
+streembit.peernet = require("./peernet");
+streembit.PeerTransport = require("./peertransport");
 
-var config_node = config.node;
-if (!config_node) {
-    throw new Exception("Application error: the seed configuration is missing")
-}
-
-assert(config_node, "Invalid start arguments. Corect start format -config 'config settings' where 'config settings' is a field in the seedsconf.js file");
-assert(config_node.address, "address must exists in the config field of seedsconf.js file");
-assert(config_node.port, "port must exists in the config field of seedsconf.js file");
-assert(config_node.seeds, "seeds must exists in the config field of seedsconf.js file");
-assert(Array.isArray(config_node.seeds), 'Invalid seeds supplied. "seeds" must be an array');
+assert(config.node, "Invalid start arguments. Corect start format -config 'config settings' where 'config settings' is a field in the config.json file");
+assert(config.node.port, "port must exists in the config field of config.json file");
+assert(config.node.seeds, "seeds must exists in the config field of config.json file");
+assert(Array.isArray(config.node.seeds), 'Invalid seeds supplied. "seeds" must be an array');
 
 // initialize the database path
 streembit.maindbdb = 0;
@@ -105,8 +96,7 @@ async.waterfall(
         function (callback) {
             var wdir = process.cwd();
             var logspath = path.join(wdir, 'logs');
-            var logConfig = config.log;
-            var loglevel = logConfig && logConfig.level ? logConfig.level : "debug";
+            var loglevel = config.log && config.log.level ? config.log.level : "debug";
             logger.init(loglevel, logspath, null, callback);
         },      
         function (callback) {
@@ -132,9 +122,9 @@ async.waterfall(
         },    
         function (callback) {
             // bootstrap the app with the streembit network
-            logger.info("Get account " + config_node.account + " from the database");
+            logger.info("Get account " + config.node.account + " from the database");
             //  is the account exists in the local db
-            streembit.accountsDB.get(config_node.account, function (err, account) {
+            streembit.accountsDB.get(config.node.account, function (err, account) {
                 if (err) {
                     callback(err);
                 }
@@ -151,56 +141,32 @@ async.waterfall(
             }
             else {
                 logger.info("Create a new account");
-                streembit.account.create(config_node.account, pksecret, callback);
+                streembit.account.create(config.node.account, pksecret, callback);
             }
-        },  
-        function (callback) {
-            // bootstrap the app with the streembit network
-            logger.info("Bootstrap the network");
-            streembit.bootclient.boot(config_node.seeds, callback);
         },    
-        function (bootseeds, callback) {
-            if (!bootseeds || !bootseeds.seeds || !bootseeds.seeds.length) {
-                return callback("Error in populating the seed list. Please make sure the 'bootseeds' configuration is correct and a firewall doesn't block the Streembit software!");
-            }
-            
-            logger.debug("seeds: %j", bootseeds.seeds);
-            logger.debug("account: " + config_node.account + ", address: " + config_node.address  + ", port: " + config_node.port);
-            
-            // initialize the Peer Network
-            logger.info("Connecting to Streembit network");
-            streembit.PeerNet.init(bootseeds, streembit.maindbdb).then(
-                function () {
-                    logger.debug("PeerNet is initialized");
-                    streembit.seeds = bootseeds.seeds;
-                    callback(null);
-                },
-                function (err) {
-                    logger.error("PeerNet init error %j", err);
-                    callback(err);
-                }
-            );
-        },
         function (callback) {
-            // validate the connection
-            logger.info("Validating Streembit network connection");
-            streembit.PeerNet.validate_connection().then(
-                function () {
-                    logger.debug("PeerNet connection is validated");
-                    callback(null);
-                },
-                function (err) {
-                    logger.error("Error in P2P connection %j", err);
-                    callback(err);
-                }
-            );
+            logger.info("public key: %s", streembit.account.public_key);
+            streembit.bootclient.discovery(config.node.address, config.node.seeds, callback);
         },
+        function (address, callback) {
+            if (!address) {
+                callback("failed to populate discovery address");
+            }
+            else {
+                config.node.address = address;
+                streembit.bootclient.resolveseeds(config.node.seeds, callback);
+            }
+        },
+        function (seeds, callback) {
+            config.node.seeds = seeds;
+            streembit.PeerTransport.start(streembit.maindbdb, callback);
+        },     
         function (callback) {
             // initialize the contacts
             streembit.contacts.init(callback);
         },
         function (callback) {
-            streembit.PeerNet.publish_account(callback);
+            streembit.peernet.publish_account(callback);
         }
     ], 
     function (err) {

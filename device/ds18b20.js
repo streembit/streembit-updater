@@ -207,7 +207,6 @@ Sensor.prototype.monitor_high_temperature = function (contact_name, event, thres
     }
 }
 
-
 Sensor.prototype.subscribe_event = function (contact_name, event, data, handlerfn, callback) {
     try {
         if (!handlerfn || typeof handlerfn != "function") {
