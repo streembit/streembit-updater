@@ -90,7 +90,12 @@ put the "myraspberrypi" name at the node.account field.
         "account": "myraspberrypi",
         "address": "localhost",
         "port": 32321,
-        "seeds": ["seed.streemio.org", "seed.streemio.net", "seed.streemio.biz", "seed.streemio.co"]
+        "seeds": [
+            { "address": "seed.streemio.org", "port": 32320, "public_key": "033b726f5ff2fc02a009ab2ef0844b807372af4b13d1236c2df9752de1ee93f5fa" },
+            { "address": "seed.streemio.net", "port": 32320, "public_key": "033d92278f9440c8b4061dddf862f5e224d0ff312e642edfa2c93c86671442609f" },
+            { "address": "seed.streemio.biz", "port": 32320, "public_key": "026f2303d7932ed86bf21b7150bcd45024f3926d37b615798855994b6b53e8b81b" },
+            { "address": "seed.streemo.uk", "port": 32320, "public_key": "035f4881a0c7d50af6fcf7cc40c3eab60c382bf7f8cd83cd2a3ff5064afd893c70" }
+        ]
     }
 ```
 
@@ -109,6 +114,21 @@ If the "sample_interval" is defined then the device will start a timer and send 
     ]
 ```
 
+Define the contacts. Only the contacts included in this list will be allowed to interact with the device. Enter the account name at the "name" field and the contact's public key to the "public_key" field.
+
+```json
+"contacts": [
+        {
+            "name": "your_no_1_contact",
+            "public_key": "your_no_1_contact_public_key"
+        },
+        {
+            "name": "your_no_2_contact",
+            "public_key": "your_no_2_contact_public_key"
+        }
+    ]
+```
+
 Start the streembit application. You must define the private key password following the -pksecret in the command line to secure your PPKI private key. 
 If the account does not exists then it will be created. Next time, you must use the same password to initialize the account.
 
@@ -116,7 +136,7 @@ If the account does not exists then it will be created. Next time, you must use 
 $ cd node streembit.js -pksecret Password123456789
 ```
 
-Open the Streembit GUI application, connect to the Strembit public network. Click on the "Machines/Connect to Internet of Things Device" menu item and enter "myraspberrypi" to find the device.    
+Open the Streembit GUI application, connect to the Strembit public network. Click on the "Machines/Connect to Internet of Things Device" menu item and enter device name defined in the node.account field to find the device.    
 Once the device is located on the network you should see the temperature sampling from the DS18B20 sensor.   
 You can send an event subscription request to the device by setting the temperature threshold. Once the temperature is higher than the threshold, then the GUI should receive a notification from the device.
 
