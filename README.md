@@ -73,12 +73,18 @@ $ sudo apt-get update
 $ sudo apt-get install git
 ```
 
+Install Streembit-pi
+
 ```bash
 $ git clone https://github.com/streembit/streembit-pi.git
 ```
 
 ```bash
 $ cd streembit-pi
+```
+
+```bash
+$ npm install
 ```
 
 Change the account details of the config.json file. Your device is identified by the account name, and therefore to make accessible your device 
@@ -88,7 +94,7 @@ put the "myraspberrypi" name at the node.account field.
 ```json
 "node": {
         "account": "myraspberrypi",
-        "address": "localhost",
+        "address": "",
         "port": 32321,
         "seeds": [
             { "address": "seed.streemio.org", "port": 32320, "public_key": "033b726f5ff2fc02a009ab2ef0844b807372af4b13d1236c2df9752de1ee93f5fa" },
@@ -129,11 +135,13 @@ Define the contacts. Only the contacts included in this list will be allowed to 
     ]
 ```
 
+You will also need to forward the port listed under node.port for your pi, in this case it is port 32321.
+
 Start the streembit application. You must define the private key password following the -pksecret in the command line to secure your PPKI private key. 
 If the account does not exists then it will be created. Next time, you must use the same password to initialize the account.
 
 ```bash
-$ cd node streembit.js -pksecret Password123456789
+$ node streembit.js -pksecret Password123456789
 ```
 
 Open the Streembit GUI application, connect to the Strembit public network. Click on the "Machines/Connect to Internet of Things Device" menu item and enter device name defined in the node.account field to find the device.    
