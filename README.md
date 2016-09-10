@@ -29,7 +29,7 @@ Build Node.js from source.
 $ cd /usr/local/src   
 ```
 
-Use the latest Node.js version instead of 10.1 of this readme.
+Use the latest Node.js version instead of 10.1 of this readme. For instructions on how to get the latest version visit: https://github.com/nodesource/distributions#installation-instructions
 
 ```bash
 $ wget https://nodejs.org/dist/v5.10.1/node-v5.10.1.tar.gz
@@ -55,7 +55,7 @@ $ make install
 $ which node
 ```
 
-The Node installation diectory should be displayed.
+The Node installation directory should be displayed.
 
 ```bash
 $ node -v
@@ -64,6 +64,7 @@ $ node -v
 The installation version should be 10.1.
 
 Install Git:
+---------------
 
 ```bash
 $ sudo apt-get update
@@ -74,7 +75,7 @@ $ sudo apt-get install git
 ```
 
 Install Streembit-pi
---------------------
+---------------
 
 ```bash
 $ git clone https://github.com/streembit/streembit-pi.git
@@ -88,7 +89,13 @@ $ cd streembit-pi
 $ npm install
 ```
 
-Change the account details of the config.json file. Your device is identified by the account name, and therefore to make accessible your device 
+Change the account details of the config.json file.
+
+```bash
+$ sudo nano config.json
+```
+
+Your device is identified by the account name, and therefore to make accessible your device 
 you must create a unique account entity on the Streembit network. For example, if you want the device to be identifed as "myraspberrypi" then
 put the "myraspberrypi" name at the node.account field.
 
@@ -138,14 +145,32 @@ Define the contacts. Only the contacts included in this list will be allowed to 
 
 You will also need to forward the port listed under node.port for your pi, in this case it is port 32321.
 
-Start the streembit application. You must define the private key password following the -pksecret in the command line to secure your PPKI private key. 
-If the account does not exists then it will be created. Next time, you must use the same password to initialize the account.
+Before you launch the Streembit application you need to load the 1-wire communication device kernal modules to detect your DS18B20 sensor. Return to your root directory and edit /boot/config.txt.
 
 ```bash
-$ node streembit.js -pksecret Password123456789
+sudo nano /boot/config.txt
 ```
 
-Open the Streembit GUI application, connect to the Strembit public network. Click on the "Machines/Connect to Internet of Things Device" menu item and enter device name defined in the node.account field to find the device.    
+and add this to the bottom of the file
+
+```bash
+dtoverlay=w1-gpio
+```
+
+Reboot your Raspberry Pi after you have made this change. 
+
+Start the Streembit application. You must define the private key password following the -pksecret in the command line to secure your PPKI private key. 
+If the account does not exist it will be created. Next time you launch Streembit, you must use the same password to initialize the account.
+
+```bash
+$ cd streembit-pi
+```
+
+```bash
+$ sudo node streembit.js -pksecret Password123456789
+```
+
+Open the Streembit GUI application, connect to the Streembit public network. Click on the "Machines/Connect to Internet of Things Device" menu item and enter device name defined in the node.account field to find the device.    
 Once the device is located on the network you should see the temperature sampling from the DS18B20 sensor.   
 You can send an event subscription request to the device by setting the temperature threshold. Once the temperature is higher than the threshold, then the GUI should receive a notification from the device.
 
