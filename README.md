@@ -74,6 +74,7 @@ $ sudo apt-get install git
 ```
 
 Install Streembit-pi
+--------------------
 
 ```bash
 $ git clone https://github.com/streembit/streembit-pi.git
