@@ -128,7 +128,7 @@ If the "sample_interval" is defined then the device will start a timer and send 
     ]
 ```
 
-Define the contacts. Only the contacts included in this list will be allowed to interact with the device. Enter the account name at the "name" field and the contact's public key to the "public_key" field.
+Define the contacts. Only the contacts included in this list will be allowed to interact with the device. Enter the account name at the "name" field and the contact's public key to the "public_key" field. You can find your account's public key when running the Streembit GUI under Tools->Account/Network info. 
 
 ```json
 "contacts": [
@@ -170,7 +170,7 @@ $ cd streembit-pi
 $ sudo node streembit.js -pksecret Password123456789
 ```
 
-Open the Streembit GUI application, connect to the Streembit public network. Click on the "Machines/Connect to Internet of Things Device" menu item and enter device name defined in the node.account field to find the device.    
+Now that you have Streembit running on the Pi, open the Streembit GUI application on the computer you wish to connect to the Pi from (if you haven't downloaded it yet go here: https://streembit.github.io/download), and connect to the Streembit public network. Click on the "Machines/Connect to Internet of Things Device" menu item and enter device name defined in the node.account field to find the device.    
 Once the device is located on the network you should see the temperature sampling from the DS18B20 sensor.   
 You can send an event subscription request to the device by setting the temperature threshold. Once the temperature is higher than the threshold, then the GUI should receive a notification from the device.
 
