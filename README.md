@@ -1,24 +1,10 @@
 # streembit-pi
-Raspberry Pi IoT implementation of Streembit using Node.js 
+Streembit-pi is the Raspberry Pi IoT implementation of Streembit using Node.js. This application will allow you to connect your Pi to the Streembit network as a device with it's own unique Streembit account name that can be looked up. Only whitelisted Streembit users will be able to connect to your Pi and recieve data from it. In this example we will be connecting to a Pi that has a DS18B20 temperature sensor hooked up to it and read the temperature data from another computer. You will need to run the Streembit UI (which can be found here: https://github.com/streembit/streembitui) on the computer you wish to connect to your Pi from. A Raspberry Pi model 3 or later is required for this application. The latest Raspbian OS was used in this example.
 
 Setting up the Streembit system on the Raspberry Pi device
 ----------------------------------------------------------
 
-Login to the Raspberry Pi device via terminal.   
-Default user: **pi**, default password: **raspberry**
-
-Change the password to your secure password
-
-```bash
-$ sudo passwd pi
-```
-
-Resize your disk if there is no space left on the SD disk. (Normally the disk has 0 space upon burning the Raspbian image. You must reboot after resizing!)
-
-```bash
-sudo raspi-config
-```
-
+Follow the instructions below to build and run this application on your Pi.
 
 Install Node.js.
 ---------------
@@ -115,8 +101,8 @@ put the "myraspberrypi" name at the node.account field.
 
 Define the device in the config.json file by adding an item to the "devices" array.  
 For this tutorial the "device" field must be "ds18b20". (That is the file name in the device directory).
-The id is to identify the device in the GUI-device interaction. It should be unique if there are multiple ds18b20 sensors connected to the Raspberry Pi device.    
-If the "sample_interval" is defined then the device will start a timer and send the temperature value to the GUI. The timeout is defined in milliseconds.
+The id is to identify the device in the UI-device interaction. It should be unique if there are multiple ds18b20 sensors connected to the Raspberry Pi device.    
+If the "sample_interval" is defined then the device will start a timer and send the temperature value to the UI. The timeout is defined in milliseconds.
 
 ```json
 "devices": [
@@ -128,7 +114,7 @@ If the "sample_interval" is defined then the device will start a timer and send 
     ]
 ```
 
-Define the contacts. Only the contacts included in this list will be allowed to interact with the device. Enter the account name at the "name" field and the contact's public key to the "public_key" field. You can find your account's public key when running the Streembit GUI under Tools->Account/Network info. 
+Define the contacts. Only the contacts included in this list will be allowed to interact with the device. Enter the account name at the "name" field and the contact's public key to the "public_key" field. You can find your account's public key when running the Streembit UI under Tools->Account/Network info. 
 
 ```json
 "contacts": [
@@ -170,7 +156,7 @@ $ cd streembit-pi
 $ sudo node streembit.js -pksecret Password123456789
 ```
 
-Now that you have Streembit running on the Pi, open the Streembit GUI application on the computer you wish to connect to the Pi from (if you haven't downloaded it yet go here: https://streembit.github.io/download), and connect to the Streembit public network. Click on the "Machines/Connect to Internet of Things Device" menu item and enter device name defined in the node.account field to find the device.    
+Now that you have Streembit running on the Pi, open the Streembit UI application on the computer you wish to connect to the Pi from (if you haven't downloaded it yet go here: https://streembit.github.io/download), and connect to the Streembit public network. Click on the "Machines/Connect to Internet of Things Device" menu item and enter device name defined in the node.account field to find the device.    
 Once the device is located on the network you should see the temperature sampling from the DS18B20 sensor.   
 You can send an event subscription request to the device by setting the temperature threshold. Once the temperature is higher than the threshold, then the GUI should receive a notification from the device.
 
