@@ -2,7 +2,7 @@
 
 #### Github hook listener
 
-directory `./github updater`
+directory `./github-updater`
 
 The purpose of this script is to auto update corresponding code base
 right after another commit was pushed to github.
@@ -33,6 +33,7 @@ Next, considering the following excerpt
  ```bash
  cd INSTALL_DIR
  git clone https://github.com/streembit/streembit-updater.git .
+ cd github-updater
  npm install
  ```
 
