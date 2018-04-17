@@ -7,10 +7,10 @@ directory `./github updater`
 The purpose of this script is to auto update corresponding code base
 right after another commit was pushed to github.
 
-There are limited set of option to configure script, you'll find them in config.json file
+There are limited set of option to configure the script, and you'll find all of them in config.json file
 
-As you may noticed, each item on the main level represents a repository.
-Repository name MUST match a name of repo you want to auto update.
+As you may noticed, each item on the main level object represents a repository.
+An object key MUST match of repo you want to auto update.
 
 Next, considering the following excerpt
 ```json
@@ -20,6 +20,7 @@ Next, considering the following excerpt
      "nodes": []
 }
 ```
+ - streembit-cli : is the repo name
  - path : represents full, or absolute path to folder where corresponding repo deployed
  - command : typical git pull command. we have added here reset command to flush off all sudden changes made on a go
 
