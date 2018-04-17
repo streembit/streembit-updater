@@ -1,0 +1,15 @@
+{
+    "name": "streembit-autodeploy",
+    "version": "1.0.0",
+    "description": "Autodeploy stremmbit instances on each new commit",
+    "license": "SEE LICENSE IN LICENSE",
+    "main": "autodeploy.js",
+    "author": {
+        "name": "team Streembit"
+    },
+    "dependencies": {
+        "gith": "^1.0.4",
+        "querystring": "^0.2.0"
+    },
+    "devDependencies": {}
+}
