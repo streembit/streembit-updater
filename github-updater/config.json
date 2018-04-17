@@ -6,7 +6,7 @@
         "nodes": []
     },
     "streembitui": {
-        "path": "/www/streembit-ui",
+        "path": "/www/streembitui",
         "command": "git reset --hard HEAD^ && git pull > /dev/null 2>&1",
         "nodes": []
     }
