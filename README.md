@@ -44,4 +44,4 @@ Next, considering the following excerpt
  pm2 start hook_master.js --name=puller
  ```
 
- That is made all set, and you should see corresponding repo updated each time you push to github
+ That made everything set, and you should see corresponding repo updated each time you push to github
