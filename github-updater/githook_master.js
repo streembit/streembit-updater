@@ -6,7 +6,8 @@ const config = require('./config');
 let stdout = '', cmd = '';
 
 stdout = execSync('whereis git');
-if (stdout.toString().length < 1) {
+const isgit = stdout.toString().trim();
+if (!/\/git/.test(isgit)) {
     console.log('Could not find git');
     process.exit(-1);
 }
