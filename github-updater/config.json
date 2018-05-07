@@ -1,10 +1,1 @@
-{
-    "streembit-cli": {
-        "path": "/home/streembit/apps/streembit-cli",
-        "command": "git reset --hard HEAD^ && git pull > /dev/null 2>&1"
-    },
-    "streembitui": {
-        "path": "/www/streembitui",
-        "command": "git reset --hard HEAD^ && git pull > /dev/null 2>&1"
-    }
-}
+{}

@@ -20,7 +20,7 @@ gith({
         try {
             cmd = `
                 cd ${config[repo]["path"]}        
-                git reset --hard HEAD^
+                git add -A && git stash && git stash drop
                 git checkout ${payload.branch}
                 ${config[repo]["command"]}
             `;
