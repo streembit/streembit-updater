@@ -15,11 +15,11 @@ if (!/\/git/.test(isgit)) {
 gith({
     repo: /streembit\/streembit(.*)/
 }).on('all', function(payload){
-    const repo = payload.repo.replace(/^streembit\//, '');
+    const repo = 'streembit/streembit-cli'.replace(/^streembit\//, '');
     if (config.hasOwnProperty(repo)) {
         try {
             cmd = `
-                cd ${config[repo]["path"]}        
+                cd ${config[repo]["path"]}
                 git add -A && git stash && git stash drop
                 git checkout ${payload.branch}
                 ${config[repo]["command"]}
@@ -28,19 +28,9 @@ gith({
             stdout = execSync(cmd);
 
             if (!/error/i.test(stdout)) {
-                if (repo === 'streembit-cli') {
-                    stdout = execSync('pm2 show streembit | grep "script args" | awk \'{split($0,a,"│"); print a[3]}\' | cut -d " " -f 2');
-                    const pwd = stdout.toString().trim();
-                    cmd = `
-                       cd ${config[repo]["path"]}
-                       pm2 delete streembit
-                       node pm2start ${pwd}
-                    `;
-
-                    stdout = execSync(cmd);
-                }
-                if (config[repo]["nodes"].length) {
-                    // ToDo: update configured nodes
+                if (config[repo].hasOwnProperty('repo-exec')) {
+                    const specialDeploy = require(config[repo]['repo-exec']);
+                    specialDeploy.exec(repo);
                 }
             } else {
                 throw new Error(stdout);
