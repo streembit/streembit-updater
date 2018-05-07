@@ -15,7 +15,7 @@ if (!/\/git/.test(isgit)) {
 gith({
     repo: /streembit\/streembit(.*)/
 }).on('all', function(payload){
-    const repo = 'streembit/streembit-cli'.replace(/^streembit\//, '');
+    const repo = payload.repo.replace(/^streembit\//, '');
     if (config.hasOwnProperty(repo)) {
         try {
             cmd = `
