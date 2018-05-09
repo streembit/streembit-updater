@@ -15,13 +15,16 @@ The object key MUST match a name of repo.
 Next, considering the following excerpt
 ```json
 "streembitui": {
-    "path": "PATH/TO/SCRIPT/ON/SERVER",
-     "command": "git pull > /dev/null 2>&1",
-     "repo-exec": "./ui-exec.js"
+    "path": {
+        "master": ""PATH/TO/PRODUCTION/ROOT",
+        "dev": ""PATH/TO/STAGING/ROOT"
+    },
+    "command": "git pull > /dev/null 2>&1",
+    "repo-exec": "./ui-exec.js"
 }
 ```
  - streembit-cli : is the repo name
- - path : represents full, or absolute path to folder where corresponding repo deployed
+ - path : is an object where each item has a "key" equal to a branch name, and "value" equal to an absolute path to git root of the branch
  - command : typical git pull command
  - repo-exec : specific to each repository command that need to be ran on update (server restart, build commands, etc.)
 

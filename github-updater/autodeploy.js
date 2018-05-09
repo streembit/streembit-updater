@@ -3,7 +3,8 @@ const { execSync } = require('child_process');
 
 const config = require('./config');
 
-let stdout = '', cmd = '';
+let stdout = '',
+    cmd = '';
 
 stdout = execSync('whereis git');
 const isgit = stdout.toString().trim();
@@ -16,18 +17,21 @@ gith({
     repo: /streembit\/streembit(.*)/
 }).on('all', function(payload){
     const repo = payload.repo.replace(/^streembit\//, '');
-    if (config.hasOwnProperty(repo)) {
+    // do we care about this update
+    if (config.hasOwnProperty(repo) && config[repo]['path'].hasOwnProperty(payload.branch)) {
         try {
+            // typical for all repos
             cmd = `
-                cd ${config[repo]["path"]}
+                cd ${config[repo]['path'][payload.branch]}
                 git add -A && git stash && git stash drop
                 git checkout ${payload.branch}
-                ${config[repo]["command"]}
+                ${config[repo]['command']}
             `;
 
             stdout = execSync(cmd);
 
             if (!/error/i.test(stdout)) {
+                // specific for each repo
                 if (config[repo].hasOwnProperty('repo-exec')) {
                     const specialDeploy = require(config[repo]['repo-exec']);
                     specialDeploy.exec(repo);
