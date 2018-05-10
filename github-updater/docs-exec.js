@@ -5,7 +5,7 @@ const config = require('./config');
 
 let stdout = '', cmd = '';
 
-exports.exec = function exec(repo, path) {
+exports.exec = function exec(path) {
 
     cmd = `
         cd ${path} && \

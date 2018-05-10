@@ -24,8 +24,8 @@ gith({
             const path = config[repo]['path'][payload.branch];
             cmd = `
                 cd ${path} && \
-                (git add -A; git stash && git stash drop \
-                git checkout ${payload.branch} \
+                (git add -A; git stash && git stash drop; \
+                git checkout ${payload.branch}; \
                 ${config[repo]['command']})
             `;
 
@@ -35,7 +35,7 @@ gith({
                 // specific for each repo
                 if (config[repo].hasOwnProperty('repo-exec')) {
                     const specialDeploy = require(config[repo]['repo-exec']);
-                    specialDeploy.exec(repo, path);
+                    specialDeploy.exec(path);
                 }
             } else {
                 throw new Error(stdout);
