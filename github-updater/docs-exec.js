@@ -5,10 +5,10 @@ const config = require('./config');
 
 let stdout = '', cmd = '';
 
-exports.exec = function exec(repo) {
+exports.exec = function exec(repo, path) {
 
     cmd = `
-        cd ${config[repo]["path"]}
+        cd ${path} && \
         bundle exec middleman build --clean
     `;
 
