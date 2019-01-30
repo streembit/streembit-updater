@@ -1,1 +1,5 @@
-config.json
+# IDE specific
+./.idea
+
+package-lock.json
+**/package-lock.json

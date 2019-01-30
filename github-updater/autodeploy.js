@@ -14,7 +14,7 @@ if (!/\/git/.test(isgit)) {
 }
 
 gith({
-    repo: /streembit\/streembit(.*)/
+    repo: /streembit\/(.*)/
 }).on('all', function(payload){
     const repo = payload.repo.replace(/^streembit\//, '');
     // do we care about this update
@@ -26,7 +26,7 @@ gith({
                 cd ${path} && \
                 (git add -A; git stash && git stash drop; \
                 git checkout ${payload.branch}; \
-                ${config[repo]['command']})
+                git pull > /dev/null 2>&1
             `;
 
             stdout = execSync(cmd);

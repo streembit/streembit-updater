@@ -1,0 +1,22 @@
+{
+    "streembitui": {
+        "path": {
+            "master": "/www/streembitui-dev",
+            "dev": "/www/streembitui"
+        }
+    },
+    "streembit-cli": {
+        "path": {
+            "master": "/home/streembit/streembit-cli",
+            "develop": "/home/streembit/streembit-cli"
+        },
+        "repo-exec": "./cli-exec.js"
+    },
+    "SponsorWeb": {
+        "path": {
+            "master": "/home/streembit/apps/sponsorweb",
+            "support": "/home/streembit/apps/sponsorweb"
+        },
+        "repo-exec": "./spo-exec.js"
+    }
+}
